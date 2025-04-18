@@ -1,0 +1,28 @@
+{
+  "name": "bicep-types-dsc",
+  "version": "0.1.0",
+  "description": "DSC to Bicep type generator",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/andyleejordan/bicep-types-dsc.git"
+  },
+  "keywords": [
+    "bicep",
+    "azure",
+    "dsc"
+  ],
+  "author": "Microsoft Corporation",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/andyleejordan/bicep-types-dsc/issues"
+  },
+  "homepage": "https://github.com/andyleejordan/bicep-types-dsc#readme",
+  "devDependencies": {
+    "@types/node": "^20.17.30",
+    "typescript": "^5.8.3"
+  }
+}
