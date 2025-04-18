@@ -2,7 +2,7 @@
 // Licensed under the MIT License.
 
 function main() {
-  console.log('Hello, world!');
+  console.log("Hello, world!");
 }
 
 main();

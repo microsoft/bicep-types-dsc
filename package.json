@@ -26,7 +26,10 @@
     "@eslint/js": "^9.25.0",
     "@types/node": "^20.17.30",
     "eslint": "^9.25.0",
+    "eslint-config-prettier": "^10.1.2",
+    "eslint-plugin-prettier": "^5.2.6",
     "globals": "^16.0.0",
+    "prettier": "^3.5.3",
     "tsx": "^4.19.3",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.30.1"
