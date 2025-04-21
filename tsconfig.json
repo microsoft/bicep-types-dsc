@@ -10,6 +10,6 @@
     "noEmit": true,
     "module": "Preserve",
   },
-  "include": ["**/*.ts", "**/*.tsx", "**/*.mjs"],
+  "include": ["src/**/*.ts", "src/**/*.tsx", "*.mjs"],
   "exclude": ["node_modules"]
 }
