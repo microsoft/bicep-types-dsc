@@ -1,11 +1,16 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
-import { Command } from "commander";
-import { version } from "../package.json";
-// TODO: import { TypeFactory } from "bicep-types";
 import addFormats from "ajv-formats";
 import Ajv2020 from "ajv/dist/2020";
 import axios from "axios";
+import {
+  ResourceFlags,
+  ScopeType,
+  TypeFactory,
+  TypeReference,
+} from "bicep-types";
+import { Command } from "commander";
+import { version } from "../package.json";
 
 type UnknownJson = Record<string, unknown>;
 
@@ -29,9 +34,11 @@ async function main() {
   const ajv = new Ajv2020({ loadSchema: loadSchema, strict: false });
   // URI formats have to be added manually to ajv
   addFormats(ajv);
-  const manifestSchema = await loadSchema(
-    "https://aka.ms/dsc/schemas/v3/bundled/resource/manifest.json",
-  );
+  const manifestUri =
+    "https://aka.ms/dsc/schemas/v3/bundled/resource/manifest.json";
+  const manifestSchema = await loadSchema(manifestUri);
+  // It has two names because of the aka.ms so we register it twice
+  ajv.addSchema(manifestSchema, manifestUri);
   const validateResource = await ajv.compileAsync(manifestSchema);
 
   // TODO: Iterate over all schemas not just this test one
@@ -42,6 +49,16 @@ async function main() {
   console.log(`DSC type: ${dscType}`);
   validateResource(schema);
   // TODO: Uhh ok great I can validate the schema but how do I iterate over it?
+
+  // TODO: The body needs to be a transform from the schema to the relevant Bicep types
+  const factory = new TypeFactory();
+  factory.addResourceType(
+    `${dscType}@v1`,
+    ScopeType.DesiredStateConfiguration,
+    undefined,
+    new TypeReference(1),
+    ResourceFlags.None,
+  );
 }
 
 await main();
