@@ -2,6 +2,7 @@
   "name": "bicep-types-dsc",
   "version": "0.1.0",
   "description": "DSC to Bicep type generator",
+  "type": "module",
   "scripts": {
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint src --ext .ts --fix",

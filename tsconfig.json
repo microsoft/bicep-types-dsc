@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "target": "ESNext",
     "esModuleInterop": true,
     "skipLibCheck": true,
     "allowJs": true,
@@ -8,7 +9,7 @@
     "verbatimModuleSyntax": true,
     "strict": true,
     "noEmit": true,
-    "module": "Preserve",
+    "module": "Preserve"
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "*.mjs"],
   "exclude": ["node_modules"]
