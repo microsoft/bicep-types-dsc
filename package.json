@@ -3,7 +3,12 @@
   "version": "0.1.0",
   "description": "DSC to Bicep type generator",
   "scripts": {
-    "lint": "eslint src",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "format": "prettier --check src",
+    "format:fix": "prettier --write src",
+    "fix": "npm run lint:fix && npm run format:fix",
+    "prestart": "npm run lint && npm run format",
     "start": "tsx src/main.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -27,7 +32,6 @@
     "@types/node": "^20.17.30",
     "eslint": "^9.25.0",
     "eslint-config-prettier": "^10.1.2",
-    "eslint-plugin-prettier": "^5.2.6",
     "globals": "^16.0.0",
     "prettier": "^3.5.3",
     "tsx": "^4.19.3",
