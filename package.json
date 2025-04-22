@@ -39,6 +39,7 @@
     "typescript-eslint": "^8.30.1"
   },
   "dependencies": {
+    "ajv": "^8.17.1",
     "bicep-types": "file:bicep-types/src/bicep-types",
     "commander": "^13.1.0"
   }
