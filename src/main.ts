@@ -19,6 +19,10 @@ async function loadSchema(uri: string): Promise<UnknownJson> {
   return response.data as UnknownJson;
 }
 
+function parseType(_schema: UnknownJson): TypeReference {
+  return new TypeReference(1);
+}
+
 async function main() {
   const program = new Command();
   program
@@ -43,20 +47,18 @@ async function main() {
 
   // TODO: Iterate over all schemas not just this test one
   const uri =
-    "https://raw.githubusercontent.com/PowerShell/DSC/refs/heads/main/registry/registry.dsc.resource.json";
-  const schema = await loadSchema(uri);
-  const dscType = schema.type as string;
-  console.log(`DSC type: ${dscType}`);
-  validateResource(schema);
+    "https://github.com/PowerShell/DSC/blob/main/process/process.dsc.resource.json";
+  const resource = await loadSchema(uri);
+  validateResource(resource);
   // TODO: Uhh ok great I can validate the schema but how do I iterate over it?
 
   // TODO: The body needs to be a transform from the schema to the relevant Bicep types
   const factory = new TypeFactory();
   factory.addResourceType(
-    `${dscType}@v1`,
+    `${resource.type as string}@${resource.version as string}`,
     ScopeType.DesiredStateConfiguration,
     undefined,
-    new TypeReference(1),
+    parseType(resource.schema as UnknownJson),
     ResourceFlags.None,
   );
 }
