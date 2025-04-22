@@ -3,9 +3,9 @@
 import { Command } from "commander";
 import { version } from "../package.json";
 // TODO: import { TypeFactory } from "bicep-types";
-import axios from "axios";
 import addFormats from "ajv-formats";
 import Ajv2020 from "ajv/dist/2020";
+import axios from "axios";
 
 type UnknownJson = Record<string, unknown>;
 
@@ -19,7 +19,7 @@ async function main() {
   program
     .version(version)
     .description(
-      "A CLI tool for generating Bicep types from DSC resource schemas"
+      "A CLI tool for generating Bicep types from DSC resource schemas",
     )
     .option("-d, --debug", "Enable debug logging");
   await program.parseAsync(process.argv);
@@ -30,7 +30,7 @@ async function main() {
   // URI formats have to be added manually to ajv
   addFormats(ajv);
   const manifestSchema = await loadSchema(
-    "https://aka.ms/dsc/schemas/v3/bundled/resource/manifest.json"
+    "https://aka.ms/dsc/schemas/v3/bundled/resource/manifest.json",
   );
   const validateResource = await ajv.compileAsync(manifestSchema);
 
