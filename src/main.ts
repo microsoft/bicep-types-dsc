@@ -53,6 +53,12 @@ async function main() {
   // TODO: Uhh ok great I can validate the schema but how do I iterate over it?
 
   // TODO: The body needs to be a transform from the schema to the relevant Bicep types
+  if (!validateResource(resource)) {
+    console.error("Invalid schema:");
+    console.error(validateResource.errors);
+    // TODO: process.exit(1); except I'm dealing with invalid schemas
+  }
+
   const factory = new TypeFactory();
   factory.addResourceType(
     `${resource.type as string}@${resource.version as string}`,
