@@ -1,9 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
-import addFormats from "ajv-formats";
-import Ajv2020 from "ajv/dist/2020";
 import axios from "axios";
 import {
+  type ObjectTypeProperty,
+  ObjectTypePropertyFlags,
   ResourceFlags,
   ScopeType,
   TypeFactory,
@@ -12,18 +12,79 @@ import {
 import { Command } from "commander";
 import { version } from "../package.json";
 
-type UnknownJson = Record<string, unknown>;
-
-async function loadSchema(uri: string): Promise<UnknownJson> {
-  const response = await axios.get(uri);
-  return response.data as UnknownJson;
+interface ManifestSchema {
+  type: string;
+  version: string;
+  description: string;
+  schema: {
+    embedded?: Schema;
+    command?: unknown;
+  };
 }
 
-function parseType(_schema: UnknownJson): TypeReference {
-  return new TypeReference(1);
+interface Schema {
+  type: string;
+  title?: string;
+  description?: string;
+  maximum?: number;
+  minimum?: number;
+  maxLength?: number;
+  minLength?: number;
+  pattern?: string;
+  items?: Schema;
+  properties: Record<string, Schema>;
 }
 
-async function main() {
+function createType(factory: TypeFactory, schema: Schema): TypeReference {
+  switch (schema.type) {
+    case "null": {
+      return factory.addNullType();
+    }
+    case "boolean": {
+      return factory.addBooleanType();
+    }
+    case "integer":
+    case "number": {
+      return factory.addIntegerType(schema.minimum, schema.maximum);
+    }
+    case "string": {
+      return factory.addStringType(
+        true,
+        schema.minLength,
+        schema.maxLength,
+        schema.pattern,
+      );
+    }
+    case "array": {
+      if (!schema.items) {
+        throw new Error(`Array type missing items definition: ${schema.type}`);
+      }
+      return factory.addArrayType(
+        createType(factory, schema.items),
+        schema.minLength,
+        schema.maxLength,
+      );
+    }
+    case "object": {
+      const properties: Record<string, ObjectTypeProperty> = Object.fromEntries(
+        Object.entries(schema.properties).map(([key, value]) => [
+          key,
+          {
+            type: createType(factory, value),
+            flags: ObjectTypePropertyFlags.None,
+            description: value.description,
+          },
+        ]),
+      );
+      return factory.addObjectType(schema.title ?? "object", properties);
+    }
+    default: {
+      throw new Error(`Unsupported schema type: ${schema.type}`);
+    }
+  }
+}
+
+async function main(): Promise<number> {
   const program = new Command();
   program
     .version(version)
@@ -33,40 +94,34 @@ async function main() {
     .option("-d, --debug", "Enable debug logging");
   await program.parseAsync(process.argv);
 
-  // The base schema is JSON 2020-12 hence the use of Ajv2020
-  // The loadSchema function will fetch everything referenced during compileAsync()
-  const ajv = new Ajv2020({ loadSchema: loadSchema, strict: false });
-  // URI formats have to be added manually to ajv
-  addFormats(ajv);
-  const manifestUri =
-    "https://aka.ms/dsc/schemas/v3/bundled/resource/manifest.json";
-  const manifestSchema = await loadSchema(manifestUri);
-  // It has two names because of the aka.ms so we register it twice
-  ajv.addSchema(manifestSchema, manifestUri);
-  const validateResource = await ajv.compileAsync(manifestSchema);
-
   // TODO: Iterate over all schemas not just this test one
   const uri =
-    "https://github.com/PowerShell/DSC/blob/main/process/process.dsc.resource.json";
-  const resource = await loadSchema(uri);
-  validateResource(resource);
-  // TODO: Uhh ok great I can validate the schema but how do I iterate over it?
+    "https://raw.githubusercontent.com/PowerShell/DSC/refs/heads/main/process/process.dsc.resource.json";
+  const response = await axios.get(uri);
+  const resource = response.data as ManifestSchema;
 
-  // TODO: The body needs to be a transform from the schema to the relevant Bicep types
-  if (!validateResource(resource)) {
-    console.error("Invalid schema:");
-    console.error(validateResource.errors);
-    // TODO: process.exit(1); except I'm dealing with invalid schemas
+  if (resource.schema.command) {
+    console.error("TODO: Handle commands schema!");
+    return 1;
+  }
+
+  if (!resource.schema.embedded) {
+    console.error("Embedded schema is not defined!");
+    return 1;
   }
 
   const factory = new TypeFactory();
+  const bodyType = createType(factory, resource.schema.embedded);
+
   factory.addResourceType(
-    `${resource.type as string}@${resource.version as string}`,
+    `${resource.type}@${resource.version}`,
     ScopeType.DesiredStateConfiguration,
     undefined,
-    parseType(resource.schema as UnknownJson),
+    bodyType,
     ResourceFlags.None,
   );
+
+  return 0;
 }
 
-await main();
+process.exit(await main());
