@@ -40,6 +40,7 @@
     "typescript-eslint": "^8.30.1"
   },
   "dependencies": {
+    "@types/json-schema": "^7.0.15",
     "axios": "^1.8.4",
     "bicep-types": "file:bicep-types/src/bicep-types",
     "commander": "^13.1.0"
