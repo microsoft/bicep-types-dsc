@@ -1,6 +1,5 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
-import axios from "axios";
 import {
   type ObjectTypeProperty,
   ObjectTypePropertyFlags,
@@ -10,6 +9,7 @@ import {
   TypeReference,
 } from "bicep-types";
 import { Command } from "commander";
+import { promises as fs } from "fs";
 import type { JSONSchema7, JSONSchema7Definition } from "json-schema";
 import { version } from "../package.json";
 
@@ -28,17 +28,21 @@ function createType(
 ): TypeReference {
   // TODO: What do?
   if (typeof schema === "boolean") {
-    throw new Error(`Boolean definitions are not supported!`);
+    throw new Error("Boolean definitions are not supported!");
   }
 
+  console.debug(`Processing schema: ${schema.title ?? "unknown"}`);
+
   if (schema.type === undefined) {
-    throw new Error(`Schema type is undefined!`);
+    throw new Error("Schema type is undefined!");
   }
 
   // TODO: Handle array?
   if (Array.isArray(schema.type)) {
-    throw new Error(`Array schema types are not supported!`);
+    throw new Error("Array schema types are not supported!");
   }
+
+  console.debug(`Schema type is: ${schema.type}`);
 
   switch (schema.type) {
     case "null": {
@@ -56,7 +60,7 @@ function createType(
 
     case "string": {
       return factory.addStringType(
-        true, // sensitive
+        undefined, // sensitive
         schema.minLength,
         schema.maxLength,
         schema.pattern,
@@ -65,12 +69,12 @@ function createType(
 
     case "array": {
       if (schema.items === undefined) {
-        throw new Error(`Array type missing items definition: ${schema.type}`);
+        throw new Error("Array type missing items definition!");
       }
 
       // TODO: Handle boolean and array?
       if (typeof schema.items === "boolean" || Array.isArray(schema.items)) {
-        throw new Error(`Unsupported items type in array type: ${schema.type}`);
+        throw new Error("Unsupported items type in array type!");
       }
 
       return factory.addArrayType(
@@ -82,9 +86,7 @@ function createType(
 
     case "object": {
       if (schema.properties === undefined) {
-        throw new Error(
-          `Object type missing properties definition: ${schema.type}`,
-        );
+        throw new Error("Object type missing properties definition!");
       }
 
       // Is this seriously the only way to map one Record into another in TypeScript?!
@@ -115,34 +117,45 @@ async function main(): Promise<number> {
     .option("-d, --debug", "Enable debug logging");
   await program.parseAsync(process.argv);
 
-  // TODO: Iterate over all schemas not just this test one
-  const uri =
-    "https://raw.githubusercontent.com/PowerShell/DSC/refs/heads/main/process/process.dsc.resource.json";
-  const response = await axios.get(uri);
-  const resource = response.data as ManifestSchema;
+  const resourceManifests: ManifestSchema[] = [];
 
-  if (resource.schema.command) {
-    // TODO: Run `dsc schema` command and extract the generated schema to parse.
-    console.error("Command-based schema not yet supported!");
-    return 1;
-  }
-
-  if (resource.schema.embedded === undefined) {
-    // TODO: Right now this is all that's supported and therefore required.
-    console.error("Embedded schema is not defined!");
-    return 1;
+  // TODO: CLI option to parse defaults
+  for (const path of [
+    "./DSC/osinfo/osinfo.dsc.resource.json",
+    "./DSC/process/process.dsc.resource.json",
+    "./DSC/reboot_pending/reboot_pending.dsc.resource.json",
+    "./DSC/resources/brew/brew.dsc.resource.json",
+  ]) {
+    const fileContent = await fs.readFile(path, "utf-8");
+    resourceManifests.push(JSON.parse(fileContent) as ManifestSchema);
   }
 
   const factory = new TypeFactory();
-  const bodyType = createType(factory, resource.schema.embedded);
+  const resourceTypes: TypeReference[] = [];
 
-  factory.addResourceType(
-    `${resource.type}@${resource.version}`,
-    ScopeType.DesiredStateConfiguration,
-    undefined,
-    bodyType,
-    ResourceFlags.None,
-  );
+  for (const resourceManifest of resourceManifests) {
+    if (resourceManifest.schema.command) {
+      // TODO: Run `dsc schema` command and extract the generated schema to parse.
+      console.error(`Command-based schema for  not yet supported!`);
+      continue;
+    }
+
+    if (resourceManifest.schema.embedded === undefined) {
+      // TODO: Right now this is all that's supported and therefore required.
+      console.error("Embedded schema is not defined!");
+      continue;
+    }
+
+    resourceTypes.push(
+      factory.addResourceType(
+        `${resourceManifest.type}@${resourceManifest.version}`,
+        ScopeType.DesiredStateConfiguration,
+        undefined,
+        createType(factory, resourceManifest.schema.embedded),
+        ResourceFlags.None,
+      ),
+    );
+  }
 
   return 0;
 }
