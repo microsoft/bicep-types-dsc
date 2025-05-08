@@ -9,8 +9,7 @@
     "format": "prettier --check src",
     "format:fix": "prettier --write src",
     "fix": "npm run lint:fix && npm run format:fix",
-    "start": "tsx src/main.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "tsx src/main.ts"
   },
   "repository": {
     "type": "git",

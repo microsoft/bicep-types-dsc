@@ -1,12 +1,16 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 import {
+  buildIndex,
   type ObjectTypeProperty,
   ObjectTypePropertyFlags,
   ResourceFlags,
   ScopeType,
   TypeFactory,
   TypeReference,
+  type TypeSettings,
+  writeIndexJson,
+  writeTypesJson,
 } from "bicep-types";
 import { Command } from "commander";
 import { promises as fs } from "fs";
@@ -14,6 +18,7 @@ import type { JSONSchema7, JSONSchema7Definition } from "json-schema";
 import log from "loglevel";
 import { version } from "../package.json";
 
+// Covers the basic required pieces from a DSC resource manifest.
 interface ManifestSchema {
   type: string;
   version: string;
@@ -23,6 +28,7 @@ interface ManifestSchema {
   };
 }
 
+// Recursively maps the resource's schema to Bicep types.
 function createType(
   factory: TypeFactory,
   schema: JSONSchema7Definition,
@@ -116,16 +122,16 @@ async function main(): Promise<number> {
       "A CLI tool for generating Bicep types from DSC resource manifests' embedded schemas",
     )
     .option("-d, --debug", "Enable debug logging")
-    .action((options: { debug?: boolean }) => {
-      if (options.debug) {
-        log.setLevel("debug");
-      }
-    });
+    .option("-o, --output <directory>", "Specify the output directory", "out");
   await program.parseAsync(process.argv);
+  const options: { debug?: boolean; output: string } = program.opts();
+  if (options.debug) {
+    log.setLevel("debug");
+  }
 
   const resourceManifests: ManifestSchema[] = [];
 
-  // TODO: CLI option to parse defaults
+  // TODO: CLI option to parse defaults or otherwise given paths.
   for (const path of [
     "./DSC/osinfo/osinfo.dsc.resource.json",
     "./DSC/process/process.dsc.resource.json",
@@ -137,7 +143,6 @@ async function main(): Promise<number> {
   }
 
   const factory = new TypeFactory();
-  const resourceTypes: TypeReference[] = [];
 
   for (const resourceManifest of resourceManifests) {
     const type = resourceManifest.type;
@@ -155,20 +160,41 @@ async function main(): Promise<number> {
 
     try {
       const bodyType = createType(factory, resourceManifest.schema.embedded);
-
-      resourceTypes.push(
-        factory.addResourceType(
-          `${type}@${resourceManifest.version}`,
-          ScopeType.DesiredStateConfiguration,
-          undefined,
-          bodyType,
-          ResourceFlags.None,
-        ),
+      // TODO: Underlying types need to be on a 'properties' object.
+      factory.addResourceType(
+        `${type}@${resourceManifest.version}`,
+        ScopeType.DesiredStateConfiguration,
+        undefined,
+        bodyType,
+        ResourceFlags.None,
       );
     } catch (error) {
       log.error(`Failed to process schema for ${type}:`, error);
     }
   }
+
+  const settings: TypeSettings = {
+    name: "DesiredStateConfiguration",
+    isSingleton: true,
+    version: version,
+  };
+
+  await fs.mkdir(options.output, { recursive: true }); // recursive ignores existing directory
+  const typesContent = writeTypesJson(factory.types);
+  await fs.writeFile(`${options.output}/types.json`, typesContent, "utf-8");
+  // Organization of the types files is arbitrary, meaning for simplicity's sake
+  // we can just use one file, even though the indexer is setup to index many
+  // types files. Hence this one-element array.
+  const typeFiles = [
+    {
+      relativePath: "types.json",
+      types: factory.types,
+    },
+  ];
+  const index = buildIndex(typeFiles, log.warn.bind(log), settings); // bind avoids incorrectly scoping 'this'
+  const indexContent = writeIndexJson(index);
+  await fs.writeFile(`${options.output}/index.json`, indexContent, "utf-8");
+  // The command `bicep publish-extension` takes 'index.json' and creates a tarball that is a Bicep extension.
 
   return 0;
 }
