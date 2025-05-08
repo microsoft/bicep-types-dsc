@@ -37,4 +37,7 @@ Now you'll have resource completions for DSC.
 However, it won't work yet. Two issues to solve:
 
 1. Enabling these Bicep configs moves to ARMv2 which emits resources as a dict instead of an array.
-2. Enabling the extension stops Bicep from treating resource as ARM and so it won't build it as ARM.
+2. A new 'imports' property (with our extension) is emmited.
+
+We actually don't have to use the version,
+but the Bicep extension likes to auto-complete type with `@`.

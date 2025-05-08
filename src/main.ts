@@ -40,6 +40,7 @@ function createType(
 
   log.debug(`Processing schema with title: ${schema.title ?? "unknown"}`);
 
+  // TODO: What about 'enum', 'const' etc.?
   if (schema.type === undefined) {
     throw new Error("Schema type is undefined!");
   }
@@ -67,7 +68,8 @@ function createType(
 
     case "string": {
       return factory.addStringType(
-        undefined, // sensitive
+        // TODO: What is 'sensitive', maybe case?
+        undefined,
         schema.minLength,
         schema.maxLength,
         schema.pattern,
@@ -102,6 +104,7 @@ function createType(
           key,
           {
             type: createType(factory, value),
+            // TODO: 'Required', 'ReadOnly' etc.
             flags: ObjectTypePropertyFlags.None,
             description:
               typeof value !== "boolean" ? value.description : undefined,
@@ -109,6 +112,7 @@ function createType(
         ]),
       );
 
+      // TODO: 'additionalProperties' and 'sensitive'
       return factory.addObjectType(schema.title ?? "object", properties);
     }
   }
@@ -164,24 +168,10 @@ async function main(): Promise<number> {
       continue;
     }
 
-    // Top-level definition for the DSC resource.
-    const bodySchema: JSONSchema7 = {
-      type: "object",
-      properties: {
-        // TODO: Is 'name' actually required by DSC?
-        name: { type: "string" },
-        // The resource's properties need to be nested under 'properties' object.
-        properties: {
-          type: "object",
-          properties: resourceManifest.schema.embedded.properties,
-        },
-      },
-    };
-
     try {
-      const bodyType = createType(factory, bodySchema);
+      const bodyType = createType(factory, resourceManifest.schema.embedded);
       factory.addResourceType(
-        `${type}@${resourceManifest.version}`,
+        type, // No version because DSC doesn't use them here
         ScopeType.DesiredStateConfiguration,
         undefined,
         bodyType,
