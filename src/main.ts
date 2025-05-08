@@ -11,6 +11,7 @@ import {
 import { Command } from "commander";
 import { promises as fs } from "fs";
 import type { JSONSchema7, JSONSchema7Definition } from "json-schema";
+import log from "loglevel";
 import { version } from "../package.json";
 
 interface ManifestSchema {
@@ -31,7 +32,7 @@ function createType(
     throw new Error("Boolean definitions are not supported!");
   }
 
-  console.debug(`Processing schema: ${schema.title ?? "unknown"}`);
+  log.debug(`Processing schema with title: ${schema.title ?? "unknown"}`);
 
   if (schema.type === undefined) {
     throw new Error("Schema type is undefined!");
@@ -42,7 +43,7 @@ function createType(
     throw new Error("Array schema types are not supported!");
   }
 
-  console.debug(`Schema type is: ${schema.type}`);
+  log.debug(`Schema type is: ${schema.type}`);
 
   switch (schema.type) {
     case "null": {
@@ -112,9 +113,14 @@ async function main(): Promise<number> {
   program
     .version(version)
     .description(
-      "A CLI tool for generating Bicep types from DSC resource schemas",
+      "A CLI tool for generating Bicep types from DSC resource manifests' embedded schemas",
     )
-    .option("-d, --debug", "Enable debug logging");
+    .option("-d, --debug", "Enable debug logging")
+    .action((options: { debug?: boolean }) => {
+      if (options.debug) {
+        log.setLevel("debug");
+      }
+    });
   await program.parseAsync(process.argv);
 
   const resourceManifests: ManifestSchema[] = [];
@@ -134,27 +140,34 @@ async function main(): Promise<number> {
   const resourceTypes: TypeReference[] = [];
 
   for (const resourceManifest of resourceManifests) {
+    const type = resourceManifest.type;
     if (resourceManifest.schema.command) {
       // TODO: Run `dsc schema` command and extract the generated schema to parse.
-      console.error(`Command-based schema for  not yet supported!`);
+      log.error(`Command-based schema for ${type} not yet supported!`);
       continue;
     }
 
     if (resourceManifest.schema.embedded === undefined) {
       // TODO: Right now this is all that's supported and therefore required.
-      console.error("Embedded schema is not defined!");
+      log.error(`Embedded schema for ${type} is not defined!`);
       continue;
     }
 
-    resourceTypes.push(
-      factory.addResourceType(
-        `${resourceManifest.type}@${resourceManifest.version}`,
-        ScopeType.DesiredStateConfiguration,
-        undefined,
-        createType(factory, resourceManifest.schema.embedded),
-        ResourceFlags.None,
-      ),
-    );
+    try {
+      const bodyType = createType(factory, resourceManifest.schema.embedded);
+
+      resourceTypes.push(
+        factory.addResourceType(
+          `${type}@${resourceManifest.version}`,
+          ScopeType.DesiredStateConfiguration,
+          undefined,
+          bodyType,
+          ResourceFlags.None,
+        ),
+      );
+    } catch (error) {
+      log.error(`Failed to process schema for ${type}:`, error);
+    }
   }
 
   return 0;
