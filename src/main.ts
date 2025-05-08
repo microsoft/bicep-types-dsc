@@ -158,9 +158,22 @@ async function main(): Promise<number> {
       continue;
     }
 
+    // Top-level definition for the DSC resource.
+    const bodySchema: JSONSchema7 = {
+      type: "object",
+      properties: {
+        // TODO: Is 'name' actually required by DSC?
+        name: { type: "string" },
+        // The resource's properties need to be nested under 'properties' object.
+        properties: {
+          type: "object",
+          properties: resourceManifest.schema.embedded.properties,
+        },
+      },
+    };
+
     try {
-      const bodyType = createType(factory, resourceManifest.schema.embedded);
-      // TODO: Underlying types need to be on a 'properties' object.
+      const bodyType = createType(factory, bodySchema);
       factory.addResourceType(
         `${type}@${resourceManifest.version}`,
         ScopeType.DesiredStateConfiguration,
