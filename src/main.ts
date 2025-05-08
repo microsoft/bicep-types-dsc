@@ -131,7 +131,10 @@ async function main(): Promise<number> {
 
   const resourceManifests: ManifestSchema[] = [];
 
-  // TODO: CLI option to parse defaults or otherwise given paths.
+  // TODO: Replace this with a loop over the output of
+  // `dsc resource list -o json` and then for each
+  // `dsc resource schema -r <type> -o json`
+  // to generate all the known resource types dynamically!
   for (const path of [
     "./DSC/osinfo/osinfo.dsc.resource.json",
     "./DSC/process/process.dsc.resource.json",
@@ -144,10 +147,13 @@ async function main(): Promise<number> {
 
   const factory = new TypeFactory();
 
+  // TODO: Add DSC's built-in functions using 'factory.addFunctionType()' which
+  // will require 'dsc schema' to emit their signatures.
+
   for (const resourceManifest of resourceManifests) {
     const type = resourceManifest.type;
     if (resourceManifest.schema.command) {
-      // TODO: Run `dsc schema` command and extract the generated schema to parse.
+      // TODO: Run `dsc resource schema` command and extract the generated schema to parse.
       log.error(`Command-based schema for ${type} not yet supported!`);
       continue;
     }
