@@ -1,5 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
+
+// DSC is planning to update from draft-07 to draft-2020-12 and its compatible
+// enough to just start using it here (and the draft-07 type is hard to use).
+import type { JsonSchemaDraft202012 } from "@hyperjump/json-schema/draft-2020-12";
 import {
   buildIndex,
   type ObjectTypeProperty,
@@ -14,7 +18,6 @@ import {
 } from "bicep-types";
 import { Command } from "commander";
 import { promises as fs } from "fs";
-import type { JSONSchema7, JSONSchema7Definition } from "json-schema";
 import log from "loglevel";
 import { version } from "../package.json";
 
@@ -23,7 +26,7 @@ interface ManifestSchema {
   type: string;
   version: string;
   schema: {
-    embedded?: JSONSchema7;
+    embedded?: JsonSchemaDraft202012;
     command?: unknown;
   };
 }
@@ -31,7 +34,7 @@ interface ManifestSchema {
 // Recursively maps the resource's schema to Bicep types.
 function createType(
   factory: TypeFactory,
-  schema: JSONSchema7Definition,
+  schema: JsonSchemaDraft202012,
 ): TypeReference {
   // TODO: What do?
   if (typeof schema === "boolean") {

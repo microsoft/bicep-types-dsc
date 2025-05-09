@@ -39,7 +39,7 @@
     "typescript-eslint": "^8.30.1"
   },
   "dependencies": {
-    "@types/json-schema": "^7.0.15",
+    "@hyperjump/json-schema": "^1.14.0",
     "bicep-types": "file:bicep-types/src/bicep-types",
     "commander": "^13.1.0",
     "loglevel": "^1.9.2"
