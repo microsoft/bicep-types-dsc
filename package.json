@@ -42,6 +42,7 @@
     "@hyperjump/json-schema": "^1.14.0",
     "bicep-types": "file:bicep-types/src/bicep-types",
     "commander": "^13.1.0",
-    "loglevel": "^1.9.2"
+    "loglevel": "^1.9.2",
+    "zx": "^8.5.4"
   }
 }

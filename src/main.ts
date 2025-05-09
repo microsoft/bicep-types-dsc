@@ -19,15 +19,22 @@ import {
 import { Command } from "commander";
 import { promises as fs } from "fs";
 import log from "loglevel";
+import { $ } from "zx";
 import { version } from "../package.json";
 
 // Covers the basic required pieces from a DSC resource manifest.
-interface ManifestSchema {
+interface ResourceSchema {
   type: string;
+  kind: string;
   version: string;
-  schema: {
-    embedded?: JsonSchemaDraft202012;
-    command?: unknown;
+  manifest: {
+    schema: {
+      embedded?: JsonSchemaDraft202012;
+      command?: {
+        executable: string;
+        args: string[];
+      };
+    };
   };
 }
 
@@ -136,43 +143,42 @@ async function main(): Promise<number> {
     log.setLevel("debug");
   }
 
-  const resourceManifests: ManifestSchema[] = [];
-
-  // TODO: Replace this with a loop over the output of
-  // `dsc resource list -o json` and then for each
-  // `dsc resource schema -r <type> -o json`
-  // to generate all the known resource types dynamically!
-  for (const path of [
-    "./DSC/osinfo/osinfo.dsc.resource.json",
-    "./DSC/process/process.dsc.resource.json",
-    "./DSC/reboot_pending/reboot_pending.dsc.resource.json",
-    "./DSC/resources/brew/brew.dsc.resource.json",
-  ]) {
-    const fileContent = await fs.readFile(path, "utf-8");
-    resourceManifests.push(JSON.parse(fileContent) as ManifestSchema);
-  }
+  const dscResourceList = await $`dsc resource list -o json`;
+  const resources = dscResourceList.stdout
+    .split("\n") // DSC is silly and emits individual lines of JSON objects
+    .map((line) => line.trim())
+    .filter((line) => line !== "")
+    .map((line) => JSON.parse(line) as ResourceSchema)
+    .filter((resource) => resource.kind === "resource");
 
   const factory = new TypeFactory();
 
   // TODO: Add DSC's built-in functions using 'factory.addFunctionType()' which
   // will require 'dsc schema' to emit their signatures.
 
-  for (const resourceManifest of resourceManifests) {
-    const type = resourceManifest.type;
-    if (resourceManifest.schema.command) {
-      // TODO: Run `dsc resource schema` command and extract the generated schema to parse.
-      log.error(`Command-based schema for ${type} not yet supported!`);
-      continue;
-    }
+  for (const resource of resources) {
+    const type = resource.type;
+    const schema = resource.manifest.schema;
 
-    if (resourceManifest.schema.embedded === undefined) {
-      // TODO: Right now this is all that's supported and therefore required.
-      log.error(`Embedded schema for ${type} is not defined!`);
+    let manifest: JsonSchemaDraft202012;
+    if (schema.embedded !== undefined) {
+      manifest = schema.embedded;
+    } else if (schema.command !== undefined) {
+      let dscResourceSchema;
+      try {
+        dscResourceSchema = await $`dsc resource schema -r ${type} -o json`;
+      } catch (error) {
+        log.error(`Failed to retrieve schema for resource ${type}:`, error);
+        continue;
+      }
+      manifest = JSON.parse(dscResourceSchema.stdout) as JsonSchemaDraft202012;
+    } else {
+      log.error(`No schema defined for resource ${type}`);
       continue;
     }
 
     try {
-      const bodyType = createType(factory, resourceManifest.schema.embedded);
+      const bodyType = createType(factory, manifest);
       factory.addResourceType(
         type, // No version because DSC doesn't use them here
         ScopeType.DesiredStateConfiguration,
@@ -181,7 +187,7 @@ async function main(): Promise<number> {
         ResourceFlags.None,
       );
     } catch (error) {
-      log.error(`Failed to process schema for ${type}:`, error);
+      log.error(`Failed to create type for resource ${type}:`, error);
     }
   }
 
@@ -206,7 +212,9 @@ async function main(): Promise<number> {
   const index = buildIndex(typeFiles, log.warn.bind(log), settings); // bind avoids incorrectly scoping 'this'
   const indexContent = writeIndexJson(index);
   await fs.writeFile(`${options.output}/index.json`, indexContent, "utf-8");
+
   // The command `bicep publish-extension` takes 'index.json' and creates a tarball that is a Bicep extension.
+  await $`bicep publish-extension --target ${options.output}/dsc.tgz ${options.output}/index.json`;
 
   return 0;
 }
