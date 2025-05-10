@@ -19,7 +19,7 @@ import {
 import { Command } from "commander";
 import { promises as fs } from "fs";
 import log from "loglevel";
-import { $ } from "zx";
+import { $, usePwsh } from "zx";
 import { version } from "../package.json";
 
 // Covers the basic required pieces from a DSC resource manifest.
@@ -45,19 +45,24 @@ function createType(
 ): TypeReference {
   // TODO: What do?
   if (typeof schema === "boolean") {
-    throw new Error("Boolean definitions are not supported!");
+    log.warn("Schema was unexpectedly a boolean!");
+    return factory.addBooleanType();
   }
 
   log.debug(`Processing schema with title: ${schema.title ?? "unknown"}`);
 
   // TODO: What about 'enum', 'const' etc.?
   if (schema.type === undefined) {
-    throw new Error("Schema type is undefined!");
+    // We're looking at a ref to a definition.
+    log.warn(`Returning Any type for ${schema.$ref ?? "unknown"}!`);
+    return factory.addAnyType();
   }
 
   // TODO: Handle array?
   if (Array.isArray(schema.type)) {
-    throw new Error("Array schema types are not supported!");
+    // We're processing an anyOf etc.
+    log.warn(`Returning Any type for array: ${schema.type.join(", ")}!`);
+    return factory.addAnyType();
   }
 
   log.debug(`Schema type is: ${schema.type}`);
@@ -88,12 +93,8 @@ function createType(
 
     case "array": {
       if (schema.items === undefined) {
-        throw new Error("Array type missing items definition!");
-      }
-
-      // TODO: Handle boolean and array?
-      if (typeof schema.items === "boolean" || Array.isArray(schema.items)) {
-        throw new Error("Unsupported items type in array type!");
+        log.warn("Array type missing items definition!");
+        return factory.addAnyType();
       }
 
       return factory.addArrayType(
@@ -106,6 +107,11 @@ function createType(
     case "object": {
       if (schema.properties === undefined) {
         throw new Error("Object type missing properties definition!");
+      }
+
+      // TODO: Parse schema.definitions (requires draft-07 and investigation).
+      if ("definitions" in schema) {
+        log.warn("Not yet handling definitions!");
       }
 
       // Is this seriously the only way to map one Record into another in TypeScript?!
@@ -143,11 +149,13 @@ async function main(): Promise<number> {
     log.setLevel("debug");
   }
 
+  if (process.platform === "win32") {
+    usePwsh();
+  }
+
   const dscResourceList = await $`dsc resource list -o json`;
-  const resources = dscResourceList.stdout
-    .split("\n") // DSC is silly and emits individual lines of JSON objects
-    .map((line) => line.trim())
-    .filter((line) => line !== "")
+  const resources = dscResourceList
+    .lines() // DSC is silly and emits individual lines of JSON objects
     .map((line) => JSON.parse(line) as ResourceSchema)
     .filter((resource) => resource.kind === "resource");
 
@@ -164,14 +172,13 @@ async function main(): Promise<number> {
     if (schema.embedded !== undefined) {
       manifest = schema.embedded;
     } else if (schema.command !== undefined) {
-      let dscResourceSchema;
       try {
-        dscResourceSchema = await $`dsc resource schema -r ${type} -o json`;
+        const commandSchema = await $`dsc resource schema -r ${type} -o json`;
+        manifest = JSON.parse(commandSchema.stdout) as JsonSchemaDraft202012;
       } catch (error) {
         log.error(`Failed to retrieve schema for resource ${type}:`, error);
         continue;
       }
-      manifest = JSON.parse(dscResourceSchema.stdout) as JsonSchemaDraft202012;
     } else {
       log.error(`No schema defined for resource ${type}`);
       continue;
