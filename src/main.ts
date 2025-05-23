@@ -28,7 +28,7 @@ interface ResourceSchema {
   type: string;
   kind: string;
   version: string;
-  manifest: {
+  manifest?: {
     schema?: {
       embedded?: JsonSchemaDraft202012;
       command?: {
@@ -159,22 +159,29 @@ async function main(): Promise<number> {
     usePwsh();
   }
 
-  const resourceList = await $`dsc resource list -o json`;
-  log.info(`Listing resources took ${resourceList.duration} ms.`);
+  let resourceList = await $`dsc resource list -o json`;
+  log.info(`Listing DSC resources took ${resourceList.duration} ms.`);
   const resources = resourceList
     .lines() // DSC is silly and emits individual lines of JSON objects
     .map((line) => JSON.parse(line) as ResourceSchema);
 
   // TODO: Use an upcoming --all flag so we don't have to handle every adapter.
   if (isWindows) {
-    const resourceList =
+    resourceList =
       await $`dsc resource list -o json -a Microsoft.Windows/WindowsPowerShell`;
-    log.info(`Listing PowerShell resources took ${resourceList.duration} ms.`);
-
+    log.info(
+      `Listing Windows PowerShell resources took ${resourceList.duration} ms.`,
+    );
     resources.concat(
       resourceList.lines().map((line) => JSON.parse(line) as ResourceSchema),
     );
   }
+
+  resourceList = await $`dsc resource list -o json -a Microsoft.DSC/PowerShell`;
+  log.info(`Listing PowerShell resources took ${resourceList.duration} ms.`);
+  resources.concat(
+    resourceList.lines().map((line) => JSON.parse(line) as ResourceSchema),
+  );
 
   const factory = new TypeFactory();
 
@@ -183,7 +190,7 @@ async function main(): Promise<number> {
 
   for (const resource of resources) {
     const type = resource.type;
-    const schema = resource.manifest.schema;
+    const schema = resource.manifest?.schema;
 
     let manifest: JsonSchemaDraft202012;
     if (schema?.embedded !== undefined) {
