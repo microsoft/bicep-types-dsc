@@ -10,6 +10,7 @@ import {
   ObjectTypePropertyFlags,
   ResourceFlags,
   ScopeType,
+  TypeBaseKind,
   TypeFactory,
   TypeReference,
   type TypeSettings,
@@ -28,7 +29,7 @@ interface ResourceSchema {
   kind: string;
   version: string;
   manifest: {
-    schema: {
+    schema?: {
       embedded?: JsonSchemaDraft202012;
       command?: {
         executable: string;
@@ -83,8 +84,8 @@ function createType(
 
     case "string": {
       return factory.addStringType(
-        // TODO: What is 'sensitive', maybe case?
-        undefined,
+        // TODO: What is 'sensitive', maybe case? No, sounds like secure.
+        true,
         schema.minLength,
         schema.maxLength,
         schema.pattern,
@@ -147,17 +148,33 @@ async function main(): Promise<number> {
   const options: { debug?: boolean; output: string } = program.opts();
   if (options.debug) {
     log.setLevel("debug");
+  } else {
+    log.setLevel("info");
   }
 
-  if (process.platform === "win32") {
+  const isWindows = process.platform === "win32";
+
+  // Otherwise the zx library tries to use bash on Windows
+  if (isWindows) {
     usePwsh();
   }
 
-  const dscResourceList = await $`dsc resource list -o json`;
-  const resources = dscResourceList
+  const resourceList = await $`dsc resource list -o json`;
+  log.info(`Listing resources took ${resourceList.duration} ms.`);
+  const resources = resourceList
     .lines() // DSC is silly and emits individual lines of JSON objects
-    .map((line) => JSON.parse(line) as ResourceSchema)
-    .filter((resource) => resource.kind === "resource");
+    .map((line) => JSON.parse(line) as ResourceSchema);
+
+  // TODO: Use an upcoming --all flag so we don't have to handle every adapter.
+  if (isWindows) {
+    const resourceList =
+      await $`dsc resource list -o json -a Microsoft.Windows/WindowsPowerShell`;
+    log.info(`Listing PowerShell resources took ${resourceList.duration} ms.`);
+
+    resources.concat(
+      resourceList.lines().map((line) => JSON.parse(line) as ResourceSchema),
+    );
+  }
 
   const factory = new TypeFactory();
 
@@ -169,34 +186,45 @@ async function main(): Promise<number> {
     const schema = resource.manifest.schema;
 
     let manifest: JsonSchemaDraft202012;
-    if (schema.embedded !== undefined) {
+    if (schema?.embedded !== undefined) {
       manifest = schema.embedded;
-    } else if (schema.command !== undefined) {
+    } else if (schema?.command !== undefined) {
       try {
         const commandSchema = await $`dsc resource schema -r ${type} -o json`;
+        log.info(
+          `Getting schema for resource ${type} took ${commandSchema.duration} ms.`,
+        );
         manifest = JSON.parse(commandSchema.stdout) as JsonSchemaDraft202012;
       } catch (error) {
         log.error(`Failed to retrieve schema for resource ${type}:`, error);
         continue;
       }
     } else {
-      log.error(`No schema defined for resource ${type}`);
+      // TODO: Add a body type that represented a nested config and add the resource
+      log.error(`No schema defined for resource ${type}!`);
       continue;
     }
 
     try {
+      log.info(`Generating Bicep type from schema for resource ${type}...`);
       const bodyType = createType(factory, manifest);
       factory.addResourceType(
-        type, // No version because DSC doesn't use them here
+        // TODO: Remove version and fix completion not to include '@'
+        `${type}@${resource.version}`,
         ScopeType.DesiredStateConfiguration,
         undefined,
         bodyType,
         ResourceFlags.None,
       );
     } catch (error) {
-      log.error(`Failed to create type for resource ${type}:`, error);
+      log.error(`Failed to create Bicep type for resource ${type}:`, error);
     }
   }
+
+  // TODO: Get these numbers to match: we're at 5/11 right now.
+  log.info(
+    `Generated ${factory.types.filter((x) => x.type === TypeBaseKind.ResourceType).length} Bicep types from ${resources.length} resources!`,
+  );
 
   const settings: TypeSettings = {
     name: "DesiredStateConfiguration",
