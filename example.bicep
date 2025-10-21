@@ -1,0 +1,2 @@
+extension dsc
+targetScope = 'desiredStateConfiguration'

@@ -1,0 +1,9 @@
+{
+  "experimentalFeaturesEnabled": {
+    "desiredStateConfiguration": true
+  },
+  "extensions": {
+    "dsc": "./out/dsc.tgz"
+  },
+  "implicitExtensions": []
+}
