@@ -1,0 +1,28 @@
+{
+  "$schema": "https://aka.ms/dsc/schemas/v3/bundled/config/document.json",
+  "languageVersion": "2.0",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.38.33.27573",
+      "templateHash": "2296072544803541196"
+    }
+  },
+  "imports": {
+    "dsc": {
+      "provider": "DesiredStateConfiguration",
+      "version": "0.1.0"
+    }
+  },
+  "resources": {
+    "aPwshProcess": {
+      "import": "dsc",
+      "type": "Microsoft/Process@0.1.0",
+      "properties": {
+        "name": "pwsh",
+        "pid": 1234
+      }
+    }
+  }
+}
