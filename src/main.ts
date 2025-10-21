@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-import type { JsonSchemaDraft202012 } from "@hyperjump/json-schema/draft-2020-12";
+import type { JsonSchemaDraft202012, JsonSchemaDraft202012Object } from "@hyperjump/json-schema/draft-2020-12";
 import {
   buildIndex,
   type ObjectTypeProperty,
@@ -26,7 +26,7 @@ interface ResourceSchema {
   version: string;
   manifest: {
     schema: {
-      embedded?: JsonSchemaDraft202012;
+      embedded?: JsonSchemaDraft202012Object;
       command?: {
         executable: string;
         args: string[];
@@ -110,6 +110,7 @@ function createType(
         Object.entries(schema.properties).map(([key, value]) => [
           key,
           {
+            // TODO: How to handle $ref?
             type: createType(factory, value),
             // TODO: 'Required', 'ReadOnly' etc.
             flags: ObjectTypePropertyFlags.None,
@@ -133,20 +134,35 @@ async function main(): Promise<number> {
       "A CLI tool for generating Bicep types from DSC resource manifests' embedded schemas",
     )
     .option("-d, --debug", "Enable debug logging")
-    .option("-o, --output <directory>", "Specify the output directory", "out");
+    .option("-o, --output <directory>", "Specify the output directory", "out")
+    .option("-r, --resources <names...>", "Specific DSC resources", []);
   await program.parseAsync(process.argv);
-  const options: { debug?: boolean; output: string } = program.opts();
+  const options: {
+    debug?: boolean;
+    output: string;
+    resources: string[];
+  } = program.opts();
   if (options.debug) {
     log.setLevel("debug");
   }
 
-  const dscResourceList = await $`dsc resource list -o json`;
-  const resources = dscResourceList.stdout
-    .split("\n") // DSC is silly and emits individual lines of JSON objects
-    .map((line) => line.trim())
-    .filter((line) => line !== "")
-    .map((line) => JSON.parse(line) as ResourceSchema)
-    .filter((resource) => resource.kind === "resource");
+  let resources: ResourceSchema[] = [];
+  for (const resource of options.resources) {
+    log.debug(`Getting resource manifest for ${resource}`);
+    const dscResourceList = await $`dsc resource list -o json ${resource}`;
+    resources.push(JSON.parse(dscResourceList.stdout) as ResourceSchema);
+  }
+
+  if (resources.length == 0) {
+    log.debug("Getting all resources' manifests");
+    const dscResourceList = await $`dsc resource list -o json`;
+    resources = dscResourceList.stdout
+      .split("\n") // DSC is silly and emits individual lines of JSON objects
+      .map((line) => line.trim())
+      .filter((line) => line !== "")
+      .map((line) => JSON.parse(line) as ResourceSchema)
+      .filter((resource) => resource.kind === "resource");
+  }
 
   const factory = new TypeFactory();
 
@@ -158,7 +174,7 @@ async function main(): Promise<number> {
     const version = resource.version;
     const schema = resource.manifest.schema;
 
-    let manifest: JsonSchemaDraft202012;
+    let manifest: JsonSchemaDraft202012Object;
     if (schema.embedded !== undefined) {
       manifest = schema.embedded;
     } else if (schema.command !== undefined) {
@@ -169,13 +185,14 @@ async function main(): Promise<number> {
         log.error(`Failed to retrieve schema for resource ${type}:`, error);
         continue;
       }
-      manifest = JSON.parse(dscResourceSchema.stdout) as JsonSchemaDraft202012;
+      manifest = JSON.parse(dscResourceSchema.stdout) as JsonSchemaDraft202012Object;
     } else {
       log.error(`No schema defined for resource ${type}`);
       continue;
     }
 
     try {
+      // TODO: Handle $defs!
       const bodyType = createType(factory, manifest);
       factory.addResourceType(
         `${type}@${version}`, // No version because DSC doesn't use them here
