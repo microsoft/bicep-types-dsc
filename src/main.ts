@@ -1,14 +1,11 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-// DSC is planning to update from draft-07 to draft-2020-12 and its compatible
-// enough to just start using it here (and the draft-07 type is hard to use).
 import type { JsonSchemaDraft202012 } from "@hyperjump/json-schema/draft-2020-12";
 import {
   buildIndex,
   type ObjectTypeProperty,
   ObjectTypePropertyFlags,
-  ResourceFlags,
   ScopeType,
   TypeFactory,
   TypeReference,
@@ -158,6 +155,7 @@ async function main(): Promise<number> {
 
   for (const resource of resources) {
     const type = resource.type;
+    const version = resource.version;
     const schema = resource.manifest.schema;
 
     let manifest: JsonSchemaDraft202012;
@@ -180,11 +178,10 @@ async function main(): Promise<number> {
     try {
       const bodyType = createType(factory, manifest);
       factory.addResourceType(
-        type, // No version because DSC doesn't use them here
-        ScopeType.DesiredStateConfiguration,
-        undefined,
+        `${type}@${version}`, // No version because DSC doesn't use them here
         bodyType,
-        ResourceFlags.None,
+        ScopeType.DesiredStateConfiguration,
+        ScopeType.DesiredStateConfiguration,
       );
     } catch (error) {
       log.error(`Failed to create type for resource ${type}:`, error);
