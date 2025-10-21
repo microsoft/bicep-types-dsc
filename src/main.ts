@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 import type { JsonSchemaDraft202012, JsonSchemaDraft202012Object } from "@hyperjump/json-schema/draft-2020-12";
+import { get as getReference } from "@hyperjump/json-pointer";
 import {
   buildIndex,
   type ObjectTypeProperty,
@@ -20,7 +21,7 @@ import { $, usePwsh } from "zx";
 import { version } from "../package.json";
 
 // Covers the basic required pieces from a DSC resource manifest.
-interface ResourceSchema {
+interface ResourceInfo {
   type: string;
   kind: string;
   version: string;
@@ -38,15 +39,35 @@ interface ResourceSchema {
 // Recursively maps the resource's schema to Bicep types.
 function createType(
   factory: TypeFactory,
+  rootSchema: JsonSchemaDraft202012,
+  title: string,
   schema: JsonSchemaDraft202012,
 ): TypeReference {
-  // TODO: What do?
+  // This is a short circuit indicating any value is valid
   if (typeof schema === "boolean") {
-    log.warn("Schema was unexpectedly a boolean!");
-    return factory.addBooleanType();
+    if (schema) {
+      return factory.addAnyType();
+    } else {
+      throw new Error("Schema was false!");
+    }
   }
 
-  log.debug(`Processing schema with title: ${schema.title ?? "unknown"}`);
+  // TODO: This will only work for root schema references, not references by URI.
+  if (schema.$ref) {
+    // Slice off the '#'
+    // TODO: Move up
+    const subSchema = getReference(schema.$ref.slice(1), rootSchema) as JsonSchemaDraft202012Object;
+    log.debug(`Followed ${schema.$ref}`);
+    // TODO: This is a rough resolution, we'll want to merge instead of replace.
+    schema = subSchema;
+  }
+
+  log.debug(`Processing schema with title: ${title}`);
+
+  if (schema.anyOf) {
+    log.warn(`Not handling 'anyOf' for ${title}`);
+    return factory.addAnyType();
+  }
 
   // TODO: What about 'enum', 'const' etc.?
   if (schema.type === undefined) {
@@ -95,7 +116,7 @@ function createType(
       }
 
       return factory.addArrayType(
-        createType(factory, schema.items),
+        createType(factory, rootSchema, title, schema.items),
         schema.minLength,
         schema.maxLength,
       );
@@ -106,18 +127,12 @@ function createType(
         throw new Error("Object type missing properties definition!");
       }
 
-      // TODO: Parse schema.definitions (requires draft-07 and investigation).
-      if ("definitions" in schema) {
-        log.warn("Not yet handling definitions!");
-      }
-
       // Is this seriously the only way to map one Record into another in TypeScript?!
       const properties: Record<string, ObjectTypeProperty> = Object.fromEntries(
         Object.entries(schema.properties).map(([key, value]) => [
           key,
           {
-            // TODO: How to handle $ref?
-            type: createType(factory, value),
+            type: createType(factory, rootSchema, key, value),
             // TODO: 'Required', 'ReadOnly' etc.
             flags: ObjectTypePropertyFlags.None,
             description:
@@ -126,8 +141,15 @@ function createType(
         ]),
       );
 
+      if (Object.keys(properties).length === 0) {
+        throw new Error("Object properties were empty!");
+      }
+
       // TODO: 'additionalProperties' and 'sensitive'
-      return factory.addObjectType(schema.title ?? "object", properties);
+      if (schema.additionalProperties) {
+        log.debug(`Not handling additional properties for ${title}`);
+      }
+      return factory.addObjectType(title, properties);
     }
   }
 }
@@ -156,11 +178,11 @@ async function main(): Promise<number> {
     usePwsh();
   }
 
-  let resources: ResourceSchema[] = [];
+  let resources: ResourceInfo[] = [];
   for (const resource of options.resources) {
     log.debug(`Getting resource manifest for ${resource}`);
     const dscResourceList = await $`dsc resource list -o json ${resource}`;
-    resources.push(JSON.parse(dscResourceList.stdout) as ResourceSchema);
+    resources.push(JSON.parse(dscResourceList.stdout) as ResourceInfo);
   }
 
   if (resources.length == 0) {
@@ -168,7 +190,7 @@ async function main(): Promise<number> {
     const dscResourceList = await $`dsc resource list -o json`;
     resources = dscResourceList
       .lines() // DSC is silly and emits individual lines of JSON objects
-      .map((line) => JSON.parse(line) as ResourceSchema)
+      .map((line) => JSON.parse(line) as ResourceInfo)
       .filter((resource) => resource.kind === "resource");
   }
 
@@ -180,15 +202,14 @@ async function main(): Promise<number> {
   for (const resource of resources) {
     const type = resource.type;
     const version = resource.version;
-    const schema = resource.manifest.schema;
 
-    let manifest: JsonSchemaDraft202012Object;
-    if (schema.embedded !== undefined) {
-      manifest = schema.embedded;
-    } else if (schema.command !== undefined) {
+    let schema: JsonSchemaDraft202012Object;
+    if (resource.manifest.schema.embedded !== undefined) {
+      schema = resource.manifest.schema.embedded;
+    } else if (resource.manifest.schema.command !== undefined) {
       try {
         const commandSchema = await $`dsc resource schema -r ${type} -o json`;
-        manifest = JSON.parse(commandSchema.stdout) as JsonSchemaDraft202012Object;
+        schema = JSON.parse(commandSchema.stdout) as JsonSchemaDraft202012Object;
       } catch (error) {
         log.error(`Failed to retrieve schema for resource ${type}:`, error);
         continue;
@@ -198,11 +219,13 @@ async function main(): Promise<number> {
       continue;
     }
 
+    // if (schema.$schema !=== )
+
     try {
-      // TODO: Handle $defs!
-      const bodyType = createType(factory, manifest);
+      log.debug(`Adding resource type ${type}`);
+      const bodyType = createType(factory, schema, type, schema);
       factory.addResourceType(
-        `${type}@${version}`, // No version because DSC doesn't use them here
+        `${type}@${version}`,
         bodyType,
         ScopeType.DesiredStateConfiguration,
         ScopeType.DesiredStateConfiguration,
