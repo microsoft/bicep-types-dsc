@@ -1,8 +1,11 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-import type { JsonSchemaDraft202012, JsonSchemaDraft202012Object } from "@hyperjump/json-schema/draft-2020-12";
 import { get as getReference } from "@hyperjump/json-pointer";
+import type {
+  JsonSchemaDraft202012,
+  JsonSchemaDraft202012Object,
+} from "@hyperjump/json-schema/draft-2020-12";
 import {
   buildIndex,
   type ObjectTypeProperty,
@@ -56,7 +59,10 @@ function createType(
   if (schema.$ref) {
     // Slice off the '#'
     // TODO: Move up
-    const subSchema = getReference(schema.$ref.slice(1), rootSchema) as JsonSchemaDraft202012Object;
+    const subSchema = getReference(
+      schema.$ref.slice(1),
+      rootSchema,
+    ) as JsonSchemaDraft202012Object;
     log.debug(`Followed ${schema.$ref}`);
     // TODO: This is a rough resolution, we'll want to merge instead of replace.
     schema = subSchema;
@@ -65,8 +71,10 @@ function createType(
   log.debug(`Processing schema with title: ${title}`);
 
   if (schema.anyOf) {
-    log.warn(`Not handling 'anyOf' for ${title}`);
-    return factory.addAnyType();
+    const elements = schema.anyOf.map((i) =>
+      createType(factory, rootSchema, "", i),
+    );
+    return factory.addUnionType(elements);
   }
 
   // TODO: What about 'enum', 'const' etc.?
@@ -110,16 +118,11 @@ function createType(
     }
 
     case "array": {
-      if (schema.items === undefined) {
-        log.warn("Array type missing items definition!");
-        return factory.addAnyType();
-      }
+      const items = schema.items
+        ? createType(factory, rootSchema, title, schema.items)
+        : factory.addAnyType();
 
-      return factory.addArrayType(
-        createType(factory, rootSchema, title, schema.items),
-        schema.minLength,
-        schema.maxLength,
-      );
+      return factory.addArrayType(items, schema.minLength, schema.maxLength);
     }
 
     case "object": {
@@ -209,7 +212,9 @@ async function main(): Promise<number> {
     } else if (resource.manifest.schema.command !== undefined) {
       try {
         const commandSchema = await $`dsc resource schema -r ${type} -o json`;
-        schema = JSON.parse(commandSchema.stdout) as JsonSchemaDraft202012Object;
+        schema = JSON.parse(
+          commandSchema.stdout,
+        ) as JsonSchemaDraft202012Object;
       } catch (error) {
         log.error(`Failed to retrieve schema for resource ${type}:`, error);
         continue;
@@ -219,10 +224,9 @@ async function main(): Promise<number> {
       continue;
     }
 
-    // if (schema.$schema !=== )
-
     try {
       log.debug(`Adding resource type ${type}`);
+      // TODO: How to handle 'latest' or '1.x' SemVer wildcards etc.
       const bodyType = createType(factory, schema, type, schema);
       factory.addResourceType(
         `${type}@${version}`,
