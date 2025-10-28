@@ -126,8 +126,9 @@ function createType(
     }
 
     case "object": {
+      // TODO: Pattern properties
       if (schema.properties === undefined) {
-        throw new Error("Object type missing properties definition!");
+          return factory.addAnyType();
       }
 
       // Is this seriously the only way to map one Record into another in TypeScript?!
@@ -148,11 +149,11 @@ function createType(
         throw new Error("Object properties were empty!");
       }
 
-      // TODO: 'additionalProperties' and 'sensitive'
-      if (schema.additionalProperties) {
-        log.debug(`Not handling additional properties for ${title}`);
-      }
-      return factory.addObjectType(title, properties);
+      const additionalProperties = schema.additionalProperties
+        ? createType(factory, rootSchema, "", schema.additionalProperties)
+        : undefined;
+
+      return factory.addObjectType(title, properties, additionalProperties);
     }
   }
 }
