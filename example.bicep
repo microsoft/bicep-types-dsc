@@ -1,7 +1,13 @@
 extension dsc
-targetScope = 'desiredStateConfiguration'
+// TODO: This currently requires using local deploy.
+targetScope = 'local'
 
-resource someprocessresource 'Microsoft/Process@0.1.0' = {
-  name: 'pwsh'
-  pid: 1234
+resource myEcho 'Microsoft/Process@0.1.0' = {
+    cmdline: 'pwsh'
+    pid: 1234
+}
+
+resource myResource 'Foo/Bar@1.2.3' = {
+    field: 'value'
+    okay: true
 }

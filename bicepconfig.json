@@ -1,6 +1,7 @@
 {
   "experimentalFeaturesEnabled": {
-    "desiredStateConfiguration": true
+    "desiredStateConfiguration": true,
+    "localDeploy": true
   },
   "extensions": {
     "dsc": "./out/dsc.tgz"

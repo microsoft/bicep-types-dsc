@@ -8,6 +8,7 @@ import type {
 } from "@hyperjump/json-schema/draft-2020-12";
 import {
   buildIndex,
+  CrossFileTypeReference,
   type ObjectTypeProperty,
   ObjectTypePropertyFlags,
   ScopeType,
@@ -232,13 +233,22 @@ async function main(): Promise<number> {
       factory.addResourceType(
         `${type}@${version}`,
         bodyType,
-        ScopeType.DesiredStateConfiguration,
-        ScopeType.DesiredStateConfiguration,
+        ScopeType.Extension,
+        ScopeType.Extension,
       );
     } catch (error) {
       log.error(`Failed to create type for resource ${type}:`, error);
     }
   }
+
+  const fallbackType = factory.addResourceType(
+    "fallback",
+    factory.addAnyType(),
+    ScopeType.Extension,
+    ScopeType.Extension
+  );
+
+  const fallbackResource = new CrossFileTypeReference("types.json", fallbackType.index)
 
   const settings: TypeSettings = {
     name: "DesiredStateConfiguration",
@@ -258,7 +268,11 @@ async function main(): Promise<number> {
       types: factory.types,
     },
   ];
-  const index = buildIndex(typeFiles, log.warn.bind(log), settings); // bind avoids incorrectly scoping 'this'
+  const index = buildIndex(
+    typeFiles,
+    log.warn.bind(log), // bind avoids incorrectly scoping 'this'
+    settings,
+    fallbackResource);
   const indexContent = writeIndexJson(index);
   await fs.writeFile(`${options.output}/index.json`, indexContent, "utf-8");
 
