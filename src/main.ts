@@ -233,8 +233,8 @@ async function main(): Promise<number> {
       factory.addResourceType(
         `${type}@${version}`,
         bodyType,
-        ScopeType.Extension,
-        ScopeType.Extension,
+        ScopeType.DesiredStateConfiguration,
+        ScopeType.DesiredStateConfiguration,
       );
     } catch (error) {
       log.error(`Failed to create type for resource ${type}:`, error);
@@ -244,8 +244,8 @@ async function main(): Promise<number> {
   const fallbackType = factory.addResourceType(
     "fallback",
     factory.addAnyType(),
-    ScopeType.Extension,
-    ScopeType.Extension
+    ScopeType.DesiredStateConfiguration,
+    ScopeType.DesiredStateConfiguration
   );
 
   const fallbackResource = new CrossFileTypeReference("types.json", fallbackType.index)
