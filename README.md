@@ -14,10 +14,7 @@ In `bicepconfig.json` enable extensibility and add the extension:
 ```json
 {
   "experimentalFeaturesEnabled": {
-    "desiredStateConfiguration": true,
-    "extensibility": true,
-    "localDeploy": true,
-    "typedVariables": true
+    "desiredStateConfiguration": true
   },
   "extensions": {
     "dsc": "./dsc.tgz"
@@ -41,3 +38,17 @@ However, it won't work yet. Two issues to solve:
 
 We actually don't have to use the version,
 but the Bicep extension likes to auto-complete type with `@`.
+
+## Building
+
+1. Install [Node.js](https://nodejs.org/en/download)
+2. Clone repo: `git clone https://github.com/microsoft/bicep-types-dsc.git`
+3. Clone submodules: `git submodule update --init`
+4. Build `bicep-types`:
+    1. `cd bicep-types/src/bicep-types`
+    2. `npm install`
+    3. `npm run build`
+    4. `cd ../../..`
+5. `npm install`
+6. With `dsc` and `bicep` in `PATH`:
+    1. Run `npm start`
