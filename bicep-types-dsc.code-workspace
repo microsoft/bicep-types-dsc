@@ -3,18 +3,30 @@
     {
       "path": ".",
     },
+    {
+      "path": "../DSC",
+    },
+    {
+      "path": "../bicep"
+    }
   ],
   "launch": {
     "version": "0.2.0",
     "configurations": [
       {
-        "name": "tsx",
+        "name": "Generate Types",
         "type": "node",
         "request": "launch",
-        "program": "${file}",
+        "program": "${workspaceFolder}/src/main.ts",
+        "args": [
+          "--debug"
+        ],
         "runtimeExecutable": "tsx",
         "console": "integratedTerminal",
         "internalConsoleOptions": "neverOpen",
+        "env": {
+          "PATH": "${workspaceFolder:DSC}/bin/debug:${env:PATH}"
+        },
       },
     ],
   },
