@@ -37,7 +37,7 @@ interface ResourceInfo {
 async function publish(output: string): Promise<ProcessOutput> {
   // The command `bicep publish-extension` takes 'index.json' and creates a tarball (OCI artifact) that is a Bicep extension.
   // Now also with a gRPC server that doesn't do much yet.
-  const dscbiep = "../DSC/target/debug/dscbicep";
+  const dscbiep = "../DSC/bin/debug/dscbicep";
   return $`bicep publish-extension ${output}/index.json \
     --bin-osx-arm64 ${dscbiep} --bin-linux-x64 ${dscbiep} --bin-win-x64 ${dscbiep} \
     --target ${output}/dsc.tgz \

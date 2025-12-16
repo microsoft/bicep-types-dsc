@@ -49,7 +49,9 @@
         "options": {
           "cwd": "${workspaceFolder:bicep-types-dsc}",
           "env": {
-            "BICEP_TRACING_ENABLED": "true"
+            "BICEP_TRACING_ENABLED": "true",
+            "DSC_RESOURCE_PATH": "${workspaceFolder:DSC}/bin/debug",
+            "PATH": "${workspaceFolder:DSC}/bin/debug",
           }
         },
         "presentation": {
