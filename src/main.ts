@@ -161,8 +161,13 @@ async function main(): Promise<number> {
   const indexContent = writeIndexJson(index);
   await fs.writeFile(`${options.output}/index.json`, indexContent, "utf-8");
 
-  // The command `bicep publish-extension` takes 'index.json' and creates a tarball that is a Bicep extension.
-  await $`bicep publish-extension --target ${options.output}/dsc.tgz ${options.output}/index.json`;
+  // The command `bicep publish-extension` takes 'index.json' and creates a tarball (OCI artifact) that is a Bicep extension.
+  // Now also with a gRPC server that doesn't do much yet.
+  const dscbiep = "../DSC/target/debug/dscbicep";
+  await $`bicep publish-extension ${options.output}/index.json \
+    --bin-osx-arm64 ${dscbiep} --bin-linux-x64 ${dscbiep} --bin-win-x64 ${dscbiep} \
+    --target ${options.output}/dsc.tgz \
+    --force`;
 
   return 0;
 }
