@@ -31,7 +31,67 @@
           "PATH": "${workspaceFolder:DSC}/bin/debug:${env:PATH}"
         },
       },
+      {
+        "name": "Local Deploy",
+        "type": "lldb",
+        "request": "attach",
+        "pid": "${command:pickMyProcess}",
+      }
     ],
+  },
+  "tasks": {
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "local-deploy",
+        "type": "shell",
+        "command": "bicep local-deploy example.bicepparam",
+        "options": {
+          "cwd": "${workspaceFolder:bicep-types-dsc}",
+          "env": {
+            "BICEP_TRACING_ENABLED": "true"
+          }
+        },
+        "presentation": {
+          "reveal": "always"
+        },
+        "group": "test"
+      },
+      {
+        "label": "Build dscbicep",
+        "type": "shell",
+        "command": "./build.ps1 -Project dscbicep",
+        "options": {
+          "cwd": "${workspaceFolder:DSC}",
+          "shell": {
+            "executable": "pwsh",
+            "args": [
+              "-NoProfile",
+              "-Command"
+            ],
+          },
+        },
+        "presentation": {
+          "reveal": "always"
+        },
+        "group": "build"
+      },
+      {
+        "label": "Publish Extension",
+        "type": "shell",
+        "command": "npm start -- --publish",
+        "options": {
+          "cwd": "${workspaceFolder:bicep-types-dsc}",
+        },
+        "dependsOn": [
+          "Build dscbicep"
+        ],
+        "presentation": {
+          "reveal": "silent"
+        },
+        "group": "build"
+      }
+    ]
   },
   "settings": {
     "git.branchProtectionPrompt": "alwaysCommit",
@@ -39,6 +99,10 @@
     "editor.defaultFormatter": "esbenp.prettier-vscode",
   },
   "extensions": {
-    "recommendations": ["dbaeumer.vscode-eslint", "esbenp.prettier-vscode"],
+    "recommendations": [
+      "dbaeumer.vscode-eslint",
+      "esbenp.prettier-vscode",
+      "vadimcn.vscode-lldb",
+    ],
   },
 }
