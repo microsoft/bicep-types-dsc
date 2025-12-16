@@ -14,7 +14,7 @@ import {
 import { Command } from "commander";
 import { promises as fs } from "fs";
 import log from "loglevel";
-import { $, usePwsh } from "zx";
+import { $, ProcessOutput, usePwsh } from "zx";
 import { version } from "../package.json";
 import { createType } from "./types";
 
@@ -34,6 +34,16 @@ interface ResourceInfo {
   };
 }
 
+async function publish(output: string): Promise<ProcessOutput> {
+  // The command `bicep publish-extension` takes 'index.json' and creates a tarball (OCI artifact) that is a Bicep extension.
+  // Now also with a gRPC server that doesn't do much yet.
+  const dscbiep = "../DSC/target/debug/dscbicep";
+  return $`bicep publish-extension ${output}/index.json \
+    --bin-osx-arm64 ${dscbiep} --bin-linux-x64 ${dscbiep} --bin-win-x64 ${dscbiep} \
+    --target ${output}/dsc.tgz \
+    --force`;
+}
+
 async function main(): Promise<number> {
   const program = new Command()
     .version(version)
@@ -42,7 +52,8 @@ async function main(): Promise<number> {
     )
     .option("-d, --debug", "Enable debug logging")
     .option("-o, --output <directory>", "Specify the output directory", "out")
-    .option("-r, --resources <names...>", "Specific DSC resources", []);
+    .option("-r, --resources <names...>", "Specific DSC resources", [])
+    .option("-p, --publish", "Skip type generation and only publish");
 
   await program.parseAsync(process.argv);
 
@@ -50,6 +61,7 @@ async function main(): Promise<number> {
     debug?: boolean;
     output: string;
     resources: string[];
+    publish?: boolean;
   } = program.opts();
 
   if (options.debug) {
@@ -58,6 +70,11 @@ async function main(): Promise<number> {
 
   if (process.platform === "win32") {
     usePwsh();
+  }
+
+  if (options.publish) {
+    await publish(options.output);
+    return 0;
   }
 
   let resources: ResourceInfo[] = [];
@@ -161,13 +178,7 @@ async function main(): Promise<number> {
   const indexContent = writeIndexJson(index);
   await fs.writeFile(`${options.output}/index.json`, indexContent, "utf-8");
 
-  // The command `bicep publish-extension` takes 'index.json' and creates a tarball (OCI artifact) that is a Bicep extension.
-  // Now also with a gRPC server that doesn't do much yet.
-  const dscbiep = "../DSC/target/debug/dscbicep";
-  await $`bicep publish-extension ${options.output}/index.json \
-    --bin-osx-arm64 ${dscbiep} --bin-linux-x64 ${dscbiep} --bin-win-x64 ${dscbiep} \
-    --target ${options.output}/dsc.tgz \
-    --force`;
+  await publish(options.output);
 
   return 0;
 }
