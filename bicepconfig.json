@@ -1,6 +1,5 @@
 {
   "experimentalFeaturesEnabled": {
-    "desiredStateConfiguration": true,
     "localDeploy": true
   },
   "extensions": {
