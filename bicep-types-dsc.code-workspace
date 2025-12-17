@@ -99,9 +99,11 @@
     ]
   },
   "settings": {
+    "[typescript]": {
+      "editor.defaultFormatter": "prettier.prettier-vscode"
+    },
     "git.branchProtectionPrompt": "alwaysCommit",
     "editor.formatOnSave": true,
-    "editor.defaultFormatter": "esbenp.prettier-vscode",
     "rust-analyzer.runnables.extraEnv": {
       "RUSTC_WRAPPER": "sccache"
     },
@@ -118,7 +120,7 @@
   "extensions": {
     "recommendations": [
       "dbaeumer.vscode-eslint",
-      "esbenp.prettier-vscode",
+      "prettier.prettier-vscode",
       "vadimcn.vscode-lldb",
     ],
   },
