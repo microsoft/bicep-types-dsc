@@ -32,10 +32,21 @@
         },
       },
       {
-        "name": "Local Deploy",
+        "name": "Attach to Rust process",
         "type": "lldb",
+        "expressions": "simple",
         "request": "attach",
         "pid": "${command:pickMyProcess}",
+      },
+      {
+        "name": "Launch dscbicep",
+        "type": "lldb",
+        "expressions": "simple",
+        "request": "launch",
+        "program": "${workspaceFolder:DSC}/bin/debug/dscbicep",
+        "env": {
+          "DSC_TRACE_LEVEL": "DEBUG",
+        }
       }
     ],
   },
@@ -43,13 +54,16 @@
     "version": "2.0.0",
     "tasks": [
       {
-        "label": "local-deploy",
+        "label": "Local Deploy",
+        "detail": "Runs bicep local-deploy example.bicepparam",
         "type": "shell",
         "command": "bicep local-deploy example.bicepparam",
         "options": {
           "cwd": "${workspaceFolder:bicep-types-dsc}",
           "env": {
-            "BICEP_TRACING_ENABLED": "true",
+            "BICEP_TRACING_ENABLED": "false",
+            "DSC_TRACE_LEVEL": "TRACE",
+            "DSC_GRPC_DEBUG": "false",
             "DSC_RESOURCE_PATH": "${workspaceFolder:DSC}/bin/debug",
             "PATH": "${workspaceFolder:DSC}/bin/debug",
           }
@@ -60,7 +74,15 @@
         "group": "test"
       },
       {
+        "label": "Launch gRPC UI",
+        "detail": "Runs grpcui against the gRPC server",
+        "type": "shell",
+        "command": "grpcui -plaintext localhost:50051",
+        "group": "test"
+      },
+      {
         "label": "Build dscbicep",
+        "detail": "Builds dscbicep gRPC server.",
         "type": "shell",
         "command": "./build.ps1 -Project dscbicep",
         "options": {
@@ -79,10 +101,14 @@
         "presentation": {
           "reveal": "always"
         },
-        "group": "build"
+        "group": {
+          "kind": "build",
+          "isDefault": false
+        }
       },
       {
         "label": "Publish Extension",
+        "detail": "Builds dscbicep gRPC server and publishes into Bicep extension.",
         "type": "shell",
         "command": "npm start -- --publish",
         "options": {
@@ -94,7 +120,10 @@
         "presentation": {
           "reveal": "silent"
         },
-        "group": "build"
+        "group": {
+          "kind": "build",
+          "isDefault": true
+        }
       }
     ]
   },
