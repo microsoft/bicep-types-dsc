@@ -64,8 +64,8 @@
             "BICEP_TRACING_ENABLED": "false",
             "DSC_TRACE_LEVEL": "TRACE",
             "DSC_GRPC_DEBUG": "false",
-            "DSC_RESOURCE_PATH": "${workspaceFolder:DSC}/bin/debug",
-            "PATH": "${workspaceFolder:DSC}/bin/debug",
+            "DSC_RESOURCE_PATH": "${workspaceFolder:DSC}/bin/debug:${env:PATH}",
+            "PATH": "${workspaceFolder:DSC}/bin/debug:${env:PATH}",
           }
         },
         "presentation": {
