@@ -27,8 +27,15 @@
         "runtimeExecutable": "tsx",
         "console": "integratedTerminal",
         "internalConsoleOptions": "neverOpen",
-        "env": {
-          "PATH": "${workspaceFolder:DSC}/bin/debug:${env:PATH}"
+        "windows": {
+          "env": {
+            "PATH": "${workspaceFolder:DSC}\\bin\\debug;${env:PATH}"
+          },
+        },
+        "osx": {
+          "env": {
+            "PATH": "${workspaceFolder:DSC}/bin/debug:${env:PATH}"
+          },
         },
       },
       {
@@ -64,8 +71,22 @@
             "BICEP_TRACING_ENABLED": "false",
             "DSC_TRACE_LEVEL": "TRACE",
             "DSC_GRPC_DEBUG": "false",
-            "DSC_RESOURCE_PATH": "${workspaceFolder:DSC}/bin/debug:${env:PATH}",
-            "PATH": "${workspaceFolder:DSC}/bin/debug:${env:PATH}",
+          }
+        },
+        "windows": {
+          "options": {
+            "env": {
+              "DSC_RESOURCE_PATH": "${workspaceFolder:DSC}\\bin\\debug;${env:PATH}",
+              "PATH": "${workspaceFolder:DSC}\\bin\\debug;${env:PATH}"
+            },
+          }
+        },
+        "osx": {
+          "options": {
+            "env": {
+              "DSC_RESOURCE_PATH": "${workspaceFolder:DSC}/bin/debug:${env:PATH}",
+              "PATH": "${workspaceFolder:DSC}/bin/debug:${env:PATH}"
+            },
           }
         },
         "presentation": {
@@ -113,6 +134,20 @@
         "command": "npm start -- --publish",
         "options": {
           "cwd": "${workspaceFolder:bicep-types-dsc}",
+        },
+        "windows": {
+          "options": {
+            "env": {
+              "PATH": "${workspaceFolder:DSC}\\bin\\debug;${env:PATH}"
+            },
+          }
+        },
+        "osx": {
+          "options": {
+            "env": {
+              "PATH": "${workspaceFolder:DSC}/bin/debug:${env:PATH}"
+            },
+          }
         },
         "dependsOn": [
           "Build dscbicep"
