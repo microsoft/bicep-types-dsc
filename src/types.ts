@@ -127,6 +127,12 @@ export function createType(
         return factory.addAnyType();
       }
 
+      // TODO: Handle metadata (secureObject, secureString, whatIf).
+      if (!title || title.trim() === "") {
+        log.warn("Skipping ObjectType with empty name, using AnyType instead");
+        return factory.addAnyType();
+      }
+
       // Is this seriously the only way to map one Record into another in TypeScript?!
       const properties: Record<string, ObjectTypeProperty> = Object.fromEntries(
         Object.entries(schema.properties).map(([key, value]) => [
