@@ -3,9 +3,9 @@
 
 import type { JsonSchemaDraft202012Object } from "@hyperjump/json-schema/draft-2020-12";
 import {
+  AllExceptExtension,
   buildIndex,
   CrossFileTypeReference,
-  ScopeType,
   TypeFactory,
   type TypeSettings,
   writeIndexJson,
@@ -123,6 +123,7 @@ async function main(): Promise<number> {
     }
 
     // Add "name" property to schema if it doesn't exist
+    // TODO: Just add the type directly to the factory instead of adding it here.
     if (schema.properties && !("name" in schema.properties)) {
       schema.properties.name = {
         type: "string",
@@ -138,8 +139,8 @@ async function main(): Promise<number> {
       factory.addResourceType(
         name,
         bodyType,
-        ScopeType.DesiredStateConfiguration,
-        ScopeType.DesiredStateConfiguration,
+        AllExceptExtension,
+        AllExceptExtension,
       );
     } catch (error) {
       log.error(`Failed to create type for resource: ${type}:`, error);
@@ -149,8 +150,8 @@ async function main(): Promise<number> {
   const fallbackType = factory.addResourceType(
     "fallback",
     factory.addAnyType(),
-    ScopeType.DesiredStateConfiguration,
-    ScopeType.DesiredStateConfiguration,
+    AllExceptExtension,
+    AllExceptExtension,
   );
 
   const fallbackResource = new CrossFileTypeReference(
