@@ -91,7 +91,8 @@ async function main(): Promise<number> {
     resources = dscResourceList
       .lines() // DSC is silly and emits individual lines of JSON objects
       .map((line) => JSON.parse(line) as ResourceInfo)
-      .filter((resource) => resource.kind === "resource");
+      .filter((resource) => resource.kind === "resource")
+      .filter((resource) => !resource.type.startsWith("Test/"));
   }
 
   const factory = new TypeFactory();
