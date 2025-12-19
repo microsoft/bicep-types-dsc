@@ -92,7 +92,12 @@ async function main(): Promise<number> {
       .lines() // DSC is silly and emits individual lines of JSON objects
       .map((line) => JSON.parse(line) as ResourceInfo)
       .filter((resource) => resource.kind === "resource")
-      .filter((resource) => !resource.type.startsWith("Test/"));
+      // Debug builds contain a bunch of Test resources
+      .filter((resource) => !resource.type.startsWith("Test/"))
+      // TODO: snake_case resource name is crashing Bicep
+      .filter(
+        (resource) => resource.type !== "Microsoft.OpenSSH.SSHD/sshd_config",
+      );
   }
 
   const factory = new TypeFactory();
