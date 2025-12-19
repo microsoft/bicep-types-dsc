@@ -35,16 +35,17 @@ interface ResourceInfo {
 }
 
 async function publish(output: string): Promise<ProcessOutput> {
-  // The command `bicep publish-extension` takes 'index.json' and creates a tarball (OCI artifact) that is a Bicep extension.
-  // Now also with a gRPC server that doesn't do much yet.
-  const dscbiep = "../DSC/bin/debug/dscbicep";
+  // The command `bicep publish-extension` takes 'index.json' and creates a tarball (OCI artifact) that is a Bicep extension, with the bundled gRPC server.
+  // TODO: Handle cross-compilation.
+  const dscbiep = `../DSC/bin/debug/dscbicep`;
   return $`bicep publish-extension ${output}/index.json \
-    --bin-osx-arm64 ${dscbiep} --bin-linux-x64 ${dscbiep} --bin-win-x64 ${dscbiep} \
+    --bin-osx-arm64 ${dscbiep} --bin-linux-x64 ${dscbiep} --bin-win-x64 ${dscbiep}.exe \
     --target ${output}/dsc.tgz \
     --force`;
 }
 
 async function main(): Promise<number> {
+  log.setDefaultLevel("info");
   const program = new Command()
     .version(version)
     .description(
@@ -79,13 +80,13 @@ async function main(): Promise<number> {
 
   let resources: ResourceInfo[] = [];
   for (const resource of options.resources) {
-    log.debug(`Getting resource manifest for ${resource}`);
+    log.info(`Getting resource manifest for ${resource}.`);
     const dscResourceList = await $`dsc resource list -o json ${resource}`;
     resources.push(JSON.parse(dscResourceList.stdout) as ResourceInfo);
   }
 
   if (resources.length == 0) {
-    log.debug("Getting all resources' manifests");
+    log.info("Getting all resources' manifests...");
     const dscResourceList = await $`dsc resource list -o json`;
     resources = dscResourceList
       .lines() // DSC is silly and emits individual lines of JSON objects
@@ -112,26 +113,35 @@ async function main(): Promise<number> {
           commandSchema.stdout,
         ) as JsonSchemaDraft202012Object;
       } catch (error) {
-        log.error(`Failed to retrieve schema for resource ${type}:`, error);
+        log.error(`Failed to retrieve schema for resource: ${type}`, error);
         continue;
       }
     } else {
-      log.error(`No schema defined for resource ${type}`);
+      log.error(`No schema defined for resource: ${type}`);
       continue;
     }
 
+    // Add "name" property to schema if it doesn't exist
+    if (schema.properties && !("name" in schema.properties)) {
+      schema.properties.name = {
+        type: "string",
+        readOnly: false,
+      };
+    }
+
     try {
-      log.debug(`Adding resource type ${type}`);
+      const name = `${type}@${version}`;
+      log.info(`Adding resource type: ${name}`);
       // TODO: How to handle 'latest' or '1.x' SemVer wildcards etc.
       const bodyType = createType(factory, schema, type, schema);
       factory.addResourceType(
-        `${type}@${version}`,
+        name,
         bodyType,
         ScopeType.DesiredStateConfiguration,
         ScopeType.DesiredStateConfiguration,
       );
     } catch (error) {
-      log.error(`Failed to create type for resource ${type}:`, error);
+      log.error(`Failed to create type for resource: ${type}:`, error);
     }
   }
 

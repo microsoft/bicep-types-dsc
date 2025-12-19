@@ -14,6 +14,27 @@ import {
 } from "bicep-types";
 import log from "loglevel";
 
+// TODO: Handled 'required' which is in a different field.
+function getPropertyFlags(title: string, schema: JsonSchemaDraft202012): ObjectTypePropertyFlags {
+  if (title === "name") {
+    return ObjectTypePropertyFlags.Identifier;
+  }
+
+  if (typeof schema === "boolean") {
+    return ObjectTypePropertyFlags.None;
+  }
+
+  if (schema.readOnly === true) {
+    return ObjectTypePropertyFlags.ReadOnly;
+  }
+
+  if (schema.writeOnly === true) {
+    return ObjectTypePropertyFlags.WriteOnly;
+  }
+
+  return ObjectTypePropertyFlags.None;
+}
+
 // Recursively maps the resource's schema to Bicep types.
 export function createType(
   factory: TypeFactory,
@@ -55,14 +76,14 @@ export function createType(
   // TODO: What about 'enum', 'const' etc.?
   if (schema.type === undefined) {
     // We're looking at a ref to a definition.
-    log.warn(`Returning Any type for ${schema.$ref ?? "unknown"}!`);
+    log.debug(`Returning Any type for ${schema.$ref ?? "unknown"}!`);
     return factory.addAnyType();
   }
 
   // TODO: Handle array?
   if (Array.isArray(schema.type)) {
     // We're processing an anyOf etc.
-    log.warn(`Returning Any type for array: ${schema.type.join(", ")}!`);
+    log.debug(`Returning Any type for array: ${schema.type.join(", ")}!`);
     return factory.addAnyType();
   }
 
@@ -112,8 +133,7 @@ export function createType(
           key,
           {
             type: createType(factory, rootSchema, key, value),
-            // TODO: 'Required', 'ReadOnly' etc.
-            flags: ObjectTypePropertyFlags.None,
+            flags: getPropertyFlags(key, value),
             description:
               typeof value !== "boolean" ? value.description : undefined,
           },
