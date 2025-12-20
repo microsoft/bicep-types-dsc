@@ -64,11 +64,12 @@
         "label": "Local Deploy",
         "detail": "Runs bicep local-deploy example.bicepparam",
         "type": "shell",
-        "command": "bicep local-deploy example.bicepparam",
+        "command": "${workspaceFolder:bicep}/src/Bicep.Cli/bin/Debug/net8.0/bicep local-deploy windows.bicepparam",
         "options": {
           "cwd": "${workspaceFolder:bicep-types-dsc}",
           "env": {
             "BICEP_TRACING_ENABLED": "false",
+            "BICEP_TRACING_VERBOSITY": "basic",
             "DSC_TRACE_LEVEL": "TRACE",
             "DSC_GRPC_DEBUG": "false",
           }
@@ -131,7 +132,7 @@
         "label": "Publish Extension",
         "detail": "Builds dscbicep gRPC server and publishes into Bicep extension.",
         "type": "shell",
-        "command": "npm start -- --publish",
+        "command": "npm run start",
         "options": {
           "cwd": "${workspaceFolder:bicep-types-dsc}",
         },

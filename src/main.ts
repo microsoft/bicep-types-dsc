@@ -39,7 +39,7 @@ async function publish(output: string): Promise<ProcessOutput> {
   // TODO: Handle cross-compilation.
   const dscbiep = `../DSC/bin/debug/dscbicep`;
   return $`bicep publish-extension ${output}/index.json \
-    --bin-osx-arm64 ${dscbiep} --bin-linux-x64 ${dscbiep} --bin-win-x64 ${dscbiep}.exe \
+    --bin-win-x64 ${dscbiep}.exe \
     --target ${output}/dsc.tgz \
     --force`;
 }
@@ -73,6 +73,8 @@ async function main(): Promise<number> {
     usePwsh();
   }
 
+  options.publish = true;
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   if (options.publish) {
     await publish(options.output);
     return 0;

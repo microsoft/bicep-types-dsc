@@ -25,6 +25,7 @@ var keys = [
   }
 ]
 
+/* TODO: Fix get logic.
 var systemKey = {
   keyPath: keys[^1].path
   keyName: keys[^1].path
@@ -38,7 +39,12 @@ var current int = currentRegistryKey.valueData.DWord
 
 var valueData = darkMode == 'toggle'
   ? (current + 1) % 1 // flip the bit
-  : darkMode == 'dark' ? 0 : 1
+  : darkMode == 'on' ? 0 : 1
+
+*/
+
+// The keys are setting light mode
+var valueData = darkMode == 'on' ? 0 : 1
 
 resource registryThemeKeys 'Microsoft.Windows/Registry@1.0.0' = [
   for key in keys: {
