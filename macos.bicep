@@ -13,7 +13,7 @@ resource darkModeScript 'Microsoft.DSC.Transitional/PowerShellScript@0.1.0' = [
 ]
 
 // Print out the status (which we got in the second script)
-output darkModeStatus string = darkModeScript[^1].output[0]
+output darkModeStatus string = darkModeScript[^1].output[?0] ?? 'unknown'
 
 @description('Packages to get')
 param packages array
