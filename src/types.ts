@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 import { get as getReference } from "@hyperjump/json-pointer";
+import type { JsonSchemaType } from "@hyperjump/json-schema";
 import type {
   JsonSchemaDraft202012,
   JsonSchemaDraft202012Object,
@@ -39,85 +40,14 @@ function getPropertyFlags(
   return flags;
 }
 
-// Recursively maps the resource's schema to Bicep types.
-export function createType(
+function processType(
   factory: TypeFactory,
   rootSchema: JsonSchemaDraft202012,
   title: string,
-  schema: JsonSchemaDraft202012,
+  schema: JsonSchemaDraft202012Object,
+  type: JsonSchemaType,
 ): TypeReference {
-  // This is a short circuit indicating any value is valid
-  if (typeof schema === "boolean") {
-    if (schema) {
-      return factory.addAnyType();
-    } else {
-      throw new Error("Schema was false!");
-    }
-  }
-
-  log.debug(`Processing schema with title: '${title}'`);
-
-  // TODO: This will only work for root schema references, not references by URI.
-  if (schema.$ref) {
-    // Slice off the '#'
-    const subSchema = getReference(
-      schema.$ref.slice(1),
-      rootSchema,
-    ) as JsonSchemaDraft202012Object;
-    log.debug(`Followed reference: '${schema.$ref}'`);
-    // TODO: This is a rough resolution, we'll want to merge instead of replace.
-    // title = subSchema.title ?? title;
-    schema = subSchema;
-  }
-
-  if (schema.anyOf) {
-    log.debug("Type is: 'anyOf'");
-    const elements = schema.anyOf.map((i) =>
-      createType(factory, rootSchema, title, i),
-    );
-    return factory.addUnionType(elements);
-  }
-
-  if (schema.oneOf) {
-    log.debug("Type is: 'oneOf'");
-    const elements = schema.oneOf.map((i) =>
-      createType(factory, rootSchema, title, i),
-    );
-    return factory.addUnionType(elements);
-  }
-
-  // TODO: What about 'allOf'?
-  if (schema.allOf) {
-    log.warn("Returning 'any' type for 'allOf' type!");
-    return factory.addAnyType();
-  }
-
-  // TODO: What about 'enum', 'const' etc.?
-  if (schema.type === undefined) {
-    // We're looking at a ref to a definition.
-    log.warn("Returning 'any' type for 'undefined' type!");
-    return factory.addAnyType();
-  }
-
-  if (Array.isArray(schema.type)) {
-    log.debug(`Type is an array: ['${schema.type.join("', ")}']`);
-    // NOTE: This is a shorthand for 'anyOf'
-
-    /* TODO: Commit and refactor the type switch to re-use here.
-    const elements = schema.type.map((i) =>
-      createType(factory, rootSchema, title, i),
-    );
-    return factory.addUnionType(elements);
-    */
-    const items = schema.items
-      ? createType(factory, rootSchema, title, schema.items)
-      : factory.addAnyType();
-
-    return factory.addArrayType(items, schema.minLength, schema.maxLength);
-  }
-
-  log.debug(`Switching on type: '${schema.type}'`);
-  switch (schema.type) {
+  switch (type) {
     case "null": {
       return factory.addNullType();
     }
@@ -197,4 +127,78 @@ export function createType(
       return factory.addObjectType(title, properties, additionalProperties);
     }
   }
+}
+
+// Recursively maps the resource's schema to Bicep types.
+export function createType(
+  factory: TypeFactory,
+  rootSchema: JsonSchemaDraft202012,
+  title: string,
+  schema: JsonSchemaDraft202012,
+): TypeReference {
+  // This is a short circuit indicating any value is valid
+  if (typeof schema === "boolean") {
+    if (schema) {
+      return factory.addAnyType();
+    } else {
+      throw new Error("Schema was false!");
+    }
+  }
+
+  log.debug(`Processing schema with title: '${title}'`);
+
+  // TODO: This will only work for root schema references, not references by URI.
+  if (schema.$ref) {
+    // Slice off the '#'
+    const subSchema = getReference(
+      schema.$ref.slice(1),
+      rootSchema,
+    ) as JsonSchemaDraft202012Object;
+    log.debug(`Followed reference: '${schema.$ref}'`);
+    // TODO: This is a rough resolution, we'll want to merge instead of replace.
+    // title = subSchema.title ?? title;
+    schema = subSchema;
+  }
+
+  if (schema.anyOf) {
+    log.debug("Type is: 'anyOf'");
+    const elements = schema.anyOf.map((i) =>
+      createType(factory, rootSchema, title, i),
+    );
+    return factory.addUnionType(elements);
+  }
+
+  if (schema.oneOf) {
+    log.debug("Type is: 'oneOf'");
+    const elements = schema.oneOf.map((i) =>
+      createType(factory, rootSchema, title, i),
+    );
+    return factory.addUnionType(elements);
+  }
+
+  // TODO: What about 'allOf'?
+  if (schema.allOf) {
+    log.warn("Returning 'any' type for 'allOf' type!");
+    return factory.addAnyType();
+  }
+
+  // TODO: What about 'enum', 'const' etc.?
+  if (schema.type === undefined) {
+    // We're looking at a ref to a definition.
+    log.warn("Returning 'any' type for 'undefined' type!");
+    return factory.addAnyType();
+  }
+
+  if (Array.isArray(schema.type)) {
+    log.debug(`Type is an array: ['${schema.type.join("', ")}']`);
+    // NOTE: This is a shorthand for 'anyOf'
+    const elements = schema.type.map((i) =>
+      // TODO: If any of these are references, we need to merge them.
+      processType(factory, rootSchema, title, schema, i),
+    );
+    return factory.addUnionType(elements);
+  }
+
+  log.debug(`Switching on type: '${schema.type}'`);
+  return processType(factory, rootSchema, title, schema, schema.type);
 }
