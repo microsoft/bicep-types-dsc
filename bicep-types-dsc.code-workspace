@@ -84,7 +84,7 @@
             "BICEP_TRACING_ENABLED": "false",
             "BICEP_TRACING_VERBOSITY": "basic",
             "DSC_TRACE_LEVEL": "TRACE",
-            "DSC_GRPC_DEBUG": "false",
+            "DSC_GRPC_DEBUG": "false"
           }
         },
         "windows": {
@@ -92,7 +92,7 @@
             "env": {
               "DSC_RESOURCE_PATH": "${workspaceFolder:DSC}\\bin\\debug;${env:PATH}",
               "PATH": "${workspaceFolder:DSC}\\bin\\debug;${env:PATH}"
-            },
+            }
           }
         },
         "osx": {
@@ -100,13 +100,14 @@
             "env": {
               "DSC_RESOURCE_PATH": "${workspaceFolder:DSC}/bin/debug:${env:PATH}",
               "PATH": "${workspaceFolder:DSC}/bin/debug:${env:PATH}"
-            },
+            }
           }
         },
         "presentation": {
           "reveal": "always"
         },
-        "group": "test"
+        "group": "test",
+        "problemMatcher": []
       },
       {
         "label": "Launch gRPC UI",
@@ -130,8 +131,8 @@
             "args": [
               "-NoProfile",
               "-Command"
-            ],
-          },
+            ]
+          }
         },
         "presentation": {
           "reveal": "always"
@@ -147,20 +148,20 @@
         "type": "shell",
         "command": "npm run start",
         "options": {
-          "cwd": "${workspaceFolder:bicep-types-dsc}",
+          "cwd": "${workspaceFolder:bicep-types-dsc}"
         },
         "windows": {
           "options": {
             "env": {
               "PATH": "${workspaceFolder:DSC}\\bin\\debug;${env:PATH}"
-            },
+            }
           }
         },
         "osx": {
           "options": {
             "env": {
               "PATH": "${workspaceFolder:DSC}/bin/debug:${env:PATH}"
-            },
+            }
           }
         },
         "dependsOn": [

@@ -1,54 +1,78 @@
 # DSC to Bicep Types Generator
 
-This is a work-in-progress app to convert DSC type definitions to Bicep's format.
+This is a work-in-progress app to convert DSC type definitions to Bicep's
+format, and now includes a DSC gRPC server (written in Rust) to support `bicep
+local-deploy`.
 
-DSC types are defined inside each resource manifest.
-For now, only embedded schemas are supported.
+With no arguments, this app will attempt to get the schemas for each available
+DSC resource by shelling out to `dsc` (and each resources subcommands if the
+manifest isn't embedded, so be sure to have a build of DSC in the `PATH`.
 
-Run this app to generate `out/types.json` and `out/index.json`.
-Then run `bicep publish-extension --target out/dsc.tgz out/index.json`.
-Move this file to wherever you'll refer to it in Bicep's configuration.
+The app will then run `bicep publish-extension ... --target out/dsc.tgz` where
+the rest of the arguments are the generated types (in the `out` directory) and
+the `dscbicep` binary, which currently only exists in DSC's `biecp-gRPC` branch.
+
+That emitted tarball is an OCI artifact recognized by Bicep as an extension,
+which we then need to configure. Note that that the only experimental feature of
+Bicep we're using now is [Local Deploy][]. The extension contains the generated
+type definitions and `dscbicep`, which is a small gRPC server that handles
+requests from `bicep local-deploy` by calling into `dsc-lib`. At no point are we
+passing JSON files to DSC, or calling the `dsc` CLI. Using Local Deploy, Bicep
+_remains_ the orchestrator of Bicep code, meaning that everything just works.
+The gRPC server is implemented in in [PR #1330][].
+
+On Windows, Rust doesn't really support Unix Domain Sockets so Bicep needed to
+be patched to prefer Named Pipes. Until [PR #18712][] is merged and a new release is
+out, a developer build of that will be needed too. This does not apply to macOS.
+
+[local deploy]: https://github.com/Azure/bicep/blob/main/docs/experimental/local-deploy.md
+[PR #1330]: https://github.com/PowerShell/DSC/pull/1330
+[PR #18712]: https://github.com/Azure/bicep/pull/18712
 
 In `bicepconfig.json` enable extensibility and add the extension:
 
 ```json
 {
   "experimentalFeaturesEnabled": {
-    "desiredStateConfiguration": true
+    "localDeploy": true
   },
   "extensions": {
-    "dsc": "./dsc.tgz"
+    "dsc": "./out/dsc.tgz"
   },
   "implicitExtensions": []
 }
 ```
 
-Then at the top of your Bicep file, enable both the extension and the target scope:
+Then at the top of your Bicep file, enable both the extension and the _local_ target scope:
 
 ```bicep
 extension dsc
-targetScope = 'desiredStateConfiguration'
+targetScope = 'local'
 ```
 
-Now you'll have resource completions for DSC.
-However, it won't work yet. Two issues to solve:
+See `example.bicep`, `macos.bicep`, `windows.bicep` and their associated
+`.bicepparam` files for more detailed examples.
 
-1. Enabling these Bicep configs moves to ARMv2 which emits resources as a dict instead of an array.
-2. A new 'imports' property (with our extension) is emmited.
-
-We actually don't have to use the version,
-but the Bicep extension likes to auto-complete type with `@`.
+Use the `Local Deploy` VS Code task to launch one of the examples. It's
+equivalent to: `bicep local-deploy example.bicepparam`, but patches the path to
+the dev build of Bicep and has some environment variables you can edit for
+debugging.
 
 ## Building
 
-1. Install [Node.js](https://nodejs.org/en/download)
-2. Clone repo: `git clone https://github.com/microsoft/bicep-types-dsc.git`
-3. Clone submodules: `git submodule update --init`
-4. Build `bicep-types`:
-    1. `cd bicep-types/src/bicep-types`
-    2. `npm install`
-    3. `npm run build`
-    4. `cd ../../..`
-5. `npm install`
-6. With `dsc` and `bicep` in `PATH`:
-    1. Run `npm start`
+1. Install [Node.js](https://nodejs.org/en/download), for this extension
+2. Install [Rust](https://rust-lang.org/tools/install/), for DSC
+3. Install [.NET SDK](https://dotnet.microsoft.com/en-us/download), for Bicep
+4. Clone this repo: `git clone https://github.com/microsoft/bicep-types-dsc.git`
+5. Clone DSC feature branch: `git clone -b bicep-gRPC https://github.com/andyleejordan/DSC.git`
+6. Clone Bicep feature branch: `git clone -b named-pipes https://github.com/andyleejordan/bicep.git`
+7. Open this project's multi-root workspace: `code bicep-types-dsc/bicep-types-dsc.code-workspace`
+8. Run `Publish Extension` VS Code workspace build task, equivalent to:
+    - `cd dsc && ./build.ps1 -Project dscbicep`
+    - `cd bicep-types-dsc && npm start` (might need `npm install` first)
+9. Run `Build CLI` VS Code Bicep task, equivalent to:
+    - `cd bicep && dotnet build src/Bicep.Cli/Bicep.Cli.csproj`
+
+DSC sometimes needs the CFS Cargo feed updated. A Microsoft employee can add
+`-UseCFS` to the build command. This project sometimes needs the CFS NPM feed
+updated. A Microsoft employee can follow a GUI-driven login procedure.
