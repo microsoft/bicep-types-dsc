@@ -98,6 +98,7 @@ async function main(): Promise<number> {
     resources = dscResourceList
       .lines() // DSC is silly and emits individual lines of JSON objects
       .map((line) => JSON.parse(line) as ResourceInfo)
+      // TODO: What about groups like Microsoft.DSC/Assertion?
       .filter((resource) => resource.kind === "resource")
       // Debug builds contain a bunch of Test resources
       .filter((resource) => !resource.type.startsWith("Test/"))
@@ -132,15 +133,6 @@ async function main(): Promise<number> {
     } else {
       log.error(`No schema defined for resource: ${type}`);
       continue;
-    }
-
-    // Add "name" property to schema if it doesn't exist
-    // TODO: Just add the type directly to the factory instead of adding it here.
-    if (schema.properties && !("name" in schema.properties)) {
-      schema.properties.name = {
-        type: "string",
-        readOnly: false,
-      };
     }
 
     try {

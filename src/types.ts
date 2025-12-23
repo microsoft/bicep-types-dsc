@@ -14,25 +14,29 @@ import {
 } from "bicep-types";
 import log from "loglevel";
 
-// TODO: Handled 'required' which is in a different field.
-function getPropertyFlags(title: string, schema: JsonSchemaDraft202012): ObjectTypePropertyFlags {
-  if (title === "name") {
-    return ObjectTypePropertyFlags.Identifier;
-  }
-
+function getPropertyFlags(
+  _title: string,
+  schema: JsonSchemaDraft202012,
+): ObjectTypePropertyFlags {
   if (typeof schema === "boolean") {
     return ObjectTypePropertyFlags.None;
   }
 
+  // NOTE: In DSC, just about any flag can be an identifier because of the 'get'
+  // command. I'm not sure what implications there may be for Bicep, except that
+  // it allows it under 'existing' so we can filter.
+  const flags = ObjectTypePropertyFlags.Identifier;
+
   if (schema.readOnly === true) {
-    return ObjectTypePropertyFlags.ReadOnly;
+    return flags | ObjectTypePropertyFlags.ReadOnly;
   }
 
   if (schema.writeOnly === true) {
-    return ObjectTypePropertyFlags.WriteOnly;
+    return flags | ObjectTypePropertyFlags.WriteOnly;
   }
 
-  return ObjectTypePropertyFlags.None;
+  // TODO: Handled 'required' which is in a different field.
+  return flags;
 }
 
 // Recursively maps the resource's schema to Bicep types.
