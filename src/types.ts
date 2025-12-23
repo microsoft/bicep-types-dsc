@@ -55,44 +55,68 @@ export function createType(
     }
   }
 
+  log.debug(`Processing schema with title: '${title}'`);
+
   // TODO: This will only work for root schema references, not references by URI.
   if (schema.$ref) {
     // Slice off the '#'
-    // TODO: Move up
     const subSchema = getReference(
       schema.$ref.slice(1),
       rootSchema,
     ) as JsonSchemaDraft202012Object;
-    log.debug(`Followed ${schema.$ref}`);
+    log.debug(`Followed reference: '${schema.$ref}'`);
     // TODO: This is a rough resolution, we'll want to merge instead of replace.
+    // title = subSchema.title ?? title;
     schema = subSchema;
   }
 
-  log.debug(`Processing schema with title: ${title}`);
-
   if (schema.anyOf) {
+    log.debug("Type is: 'anyOf'");
     const elements = schema.anyOf.map((i) =>
-      createType(factory, rootSchema, "", i),
+      createType(factory, rootSchema, title, i),
     );
     return factory.addUnionType(elements);
+  }
+
+  if (schema.oneOf) {
+    log.debug("Type is: 'oneOf'");
+    const elements = schema.oneOf.map((i) =>
+      createType(factory, rootSchema, title, i),
+    );
+    return factory.addUnionType(elements);
+  }
+
+  // TODO: What about 'allOf'?
+  if (schema.allOf) {
+    log.warn("Returning 'any' type for 'allOf' type!");
+    return factory.addAnyType();
   }
 
   // TODO: What about 'enum', 'const' etc.?
   if (schema.type === undefined) {
     // We're looking at a ref to a definition.
-    log.debug(`Returning Any type for ${schema.$ref ?? "unknown"}!`);
+    log.warn("Returning 'any' type for 'undefined' type!");
     return factory.addAnyType();
   }
 
-  // TODO: Handle array?
   if (Array.isArray(schema.type)) {
-    // We're processing an anyOf etc.
-    log.debug(`Returning Any type for array: ${schema.type.join(", ")}!`);
-    return factory.addAnyType();
+    log.debug(`Type is an array: ['${schema.type.join("', ")}']`);
+    // NOTE: This is a shorthand for 'anyOf'
+
+    /* TODO: Commit and refactor the type switch to re-use here.
+    const elements = schema.type.map((i) =>
+      createType(factory, rootSchema, title, i),
+    );
+    return factory.addUnionType(elements);
+    */
+    const items = schema.items
+      ? createType(factory, rootSchema, title, schema.items)
+      : factory.addAnyType();
+
+    return factory.addArrayType(items, schema.minLength, schema.maxLength);
   }
 
-  log.debug(`Schema type is: ${schema.type}`);
-
+  log.debug(`Switching on type: '${schema.type}'`);
   switch (schema.type) {
     case "null": {
       return factory.addNullType();
@@ -131,15 +155,22 @@ export function createType(
         return factory.addAnyType();
       }
 
-      // TODO: What else can we do for these? E.g. registry's valueData.
-      // We need to handle $defs for sure.
+      const entries = Object.entries(schema.properties);
+
+      // TODO: Double check these with Mikey.
       if (!title || title.trim() === "") {
-        log.warn("Processing ObjectType with no title...");
+        if (entries.length > 1) {
+          log.warn("Expected only one property when missing title!");
+          return factory.addAnyType();
+        }
+        /* const [key, value] = entries[0];
+        log.debug(`Processing object definition for: ${title}`);
+        return createType(factory, rootSchema, key, value); */
       }
 
       // Is this seriously the only way to map one Record into another in TypeScript?!
       const properties: Record<string, ObjectTypeProperty> = Object.fromEntries(
-        Object.entries(schema.properties).map(([key, value]) => [
+        entries.map(([key, value]) => [
           key,
           {
             type: createType(factory, rootSchema, key, value),
@@ -155,7 +186,12 @@ export function createType(
       }
 
       const additionalProperties = schema.additionalProperties
-        ? createType(factory, rootSchema, "", schema.additionalProperties)
+        ? createType(
+            factory,
+            rootSchema,
+            "additionalProperties",
+            schema.additionalProperties,
+          )
         : undefined;
 
       return factory.addObjectType(title, properties, additionalProperties);

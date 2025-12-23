@@ -87,7 +87,7 @@ async function main(): Promise<number> {
 
   let resources: ResourceInfo[] = [];
   for (const resource of options.resources) {
-    log.info(`Getting resource manifest for ${resource}.`);
+    log.info(`Getting resource manifest for: '${resource}'`);
     const dscResourceList = await $`dsc resource list -o json ${resource}`;
     resources.push(JSON.parse(dscResourceList.stdout) as ResourceInfo);
   }
@@ -127,17 +127,17 @@ async function main(): Promise<number> {
           commandSchema.stdout,
         ) as JsonSchemaDraft202012Object;
       } catch (error) {
-        log.error(`Failed to retrieve schema for resource: ${type}`, error);
+        log.error(`Failed to retrieve schema for resource: '${type}'!`, error);
         continue;
       }
     } else {
-      log.error(`No schema defined for resource: ${type}`);
+      log.error(`No schema defined for resource: '${type}'!`);
       continue;
     }
 
     try {
       const name = `${type}@${version}`;
-      log.info(`Adding resource type: ${name}`);
+      log.info(`Adding resource type: '${name}'`);
       // TODO: How to handle 'latest' or '1.x' SemVer wildcards etc.
       const bodyType = createType(factory, schema, type, schema);
       factory.addResourceType(
