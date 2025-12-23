@@ -59,12 +59,25 @@
   },
   "tasks": {
     "version": "2.0.0",
+    "inputs": [
+      {
+        "type": "pickString",
+        "id": "bicepParam",
+        "description": "Which Bicep parameter file?",
+        "options": [
+          "example",
+          "macos",
+          "windows"
+        ],
+        "default": "example"
+      }
+    ],
     "tasks": [
       {
         "label": "Local Deploy",
-        "detail": "Runs bicep local-deploy example.bicepparam",
+        "detail": "Runs bicep local-deploy",
         "type": "shell",
-        "command": "${workspaceFolder:bicep}/src/Bicep.Cli/bin/Debug/net8.0/bicep local-deploy windows.bicepparam",
+        "command": "${workspaceFolder:bicep}/src/Bicep.Cli/bin/Debug/net10.0/bicep local-deploy ${input:bicepParam}.bicepparam",
         "options": {
           "cwd": "${workspaceFolder:bicep-types-dsc}",
           "env": {
