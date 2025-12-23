@@ -1,3 +1,3 @@
 using 'windows.bicep'
 
-param darkMode = 'off'
+param darkMode = 'toggle'

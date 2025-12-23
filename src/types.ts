@@ -131,10 +131,10 @@ export function createType(
         return factory.addAnyType();
       }
 
-      // TODO: Handle metadata (secureObject, secureString, whatIf).
+      // TODO: What else can we do for these? E.g. registry's valueData.
+      // We need to handle $defs for sure.
       if (!title || title.trim() === "") {
-        log.warn("Skipping ObjectType with empty name, using AnyType instead");
-        return factory.addAnyType();
+        log.warn("Processing ObjectType with no title...");
       }
 
       // Is this seriously the only way to map one Record into another in TypeScript?!
