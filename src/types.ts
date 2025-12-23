@@ -40,6 +40,40 @@ function getPropertyFlags(
   return flags;
 }
 
+// Flattens arrays that contain JSON references
+function flattenUnionTypes(
+  rootSchema: JsonSchemaDraft202012,
+  schemas: readonly JsonSchemaDraft202012[],
+): JsonSchemaDraft202012[] {
+  const result: JsonSchemaDraft202012[] = [];
+
+  for (const schema of schemas) {
+    if (typeof schema === "object" && schema.$ref) {
+      // Slice off the '#'
+      const resolved = getReference(
+        schema.$ref.slice(1),
+        rootSchema,
+      ) as JsonSchemaDraft202012Object;
+
+      // If the resolved reference is an anyOf or oneOf, flatten its elements
+      if (resolved.anyOf) {
+        log.debug("Flattening 'anyOf'...");
+        result.push(...flattenUnionTypes(rootSchema, resolved.anyOf));
+      } else if (resolved.oneOf) {
+        log.debug("Flattening 'oneOf'...");
+        result.push(...flattenUnionTypes(rootSchema, resolved.oneOf));
+      } else {
+        result.push(resolved);
+      }
+    } else {
+      // Not a $ref, just add it
+      result.push(schema);
+    }
+  }
+
+  return result;
+}
+
 function processType(
   factory: TypeFactory,
   rootSchema: JsonSchemaDraft202012,
@@ -93,9 +127,9 @@ function processType(
           log.warn("Expected only one property when missing title!");
           return factory.addAnyType();
         }
-        /* const [key, value] = entries[0];
-        log.debug(`Processing object definition for: ${title}`);
-        return createType(factory, rootSchema, key, value); */
+        const [key] = entries[0];
+        title = `{ ${key}: ... }`;
+        log.debug(`Processing untitled object, using: '${title}'`);
       }
 
       // Is this seriously the only way to map one Record into another in TypeScript?!
@@ -150,28 +184,30 @@ export function createType(
   // TODO: This will only work for root schema references, not references by URI.
   if (schema.$ref) {
     // Slice off the '#'
-    const subSchema = getReference(
+    const resolved = getReference(
       schema.$ref.slice(1),
       rootSchema,
     ) as JsonSchemaDraft202012Object;
     log.debug(`Followed reference: '${schema.$ref}'`);
-    // TODO: This is a rough resolution, we'll want to merge instead of replace.
-    // title = subSchema.title ?? title;
-    schema = subSchema;
+    // NOTE: A $ref should only need to be flattened if it was found in a union
+    // type, which should've already happened by the time this is reached.
+    schema = resolved;
   }
 
   if (schema.anyOf) {
     log.debug("Type is: 'anyOf'");
-    const elements = schema.anyOf.map((i) =>
-      createType(factory, rootSchema, title, i),
+    const flattened = flattenUnionTypes(rootSchema, schema.anyOf);
+    const elements = flattened.map((i) =>
+      createType(factory, rootSchema, "", i),
     );
     return factory.addUnionType(elements);
   }
 
   if (schema.oneOf) {
     log.debug("Type is: 'oneOf'");
-    const elements = schema.oneOf.map((i) =>
-      createType(factory, rootSchema, title, i),
+    const flattened = flattenUnionTypes(rootSchema, schema.oneOf);
+    const elements = flattened.map((i) =>
+      createType(factory, rootSchema, "", i),
     );
     return factory.addUnionType(elements);
   }
@@ -191,10 +227,9 @@ export function createType(
 
   if (Array.isArray(schema.type)) {
     log.debug(`Type is an array: ['${schema.type.join("', ")}']`);
-    // NOTE: This is a shorthand for 'anyOf'
+    // NOTE: This is a shorthand for 'anyOf' but of primitive types
     const elements = schema.type.map((i) =>
-      // TODO: If any of these are references, we need to merge them.
-      processType(factory, rootSchema, title, schema, i),
+      processType(factory, rootSchema, "", schema, i),
     );
     return factory.addUnionType(elements);
   }

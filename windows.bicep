@@ -30,7 +30,7 @@ resource currentRegistryKey 'Microsoft.Windows/Registry@1.0.0' existing = {
   valueName: keys[^1].name
 }
 
-var current int = currentRegistryKey.valueData.DWord
+var current = max(currentRegistryKey.valueData.?DWord ?? 0, 0)
 
 var valueData = darkMode == 'toggle'
   ? (current + 1) % 2 // flip the bit
@@ -40,6 +40,8 @@ resource registryThemeKeys 'Microsoft.Windows/Registry@1.0.0' = [
   for key in keys: {
     keyPath: key.path
     valueName: key.name
-    valueData: { DWord: valueData }
+    valueData: {
+      DWord: valueData
+    }
   }
 ]
