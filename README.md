@@ -67,10 +67,14 @@ debugging.
 5. Clone DSC feature branch: `git clone -b bicep-gRPC https://github.com/andyleejordan/DSC.git`
 6. Clone Bicep feature branch: `git clone -b named-pipes https://github.com/andyleejordan/bicep.git`
 7. Open this project's multi-root workspace: `code bicep-types-dsc/bicep-types-dsc.code-workspace`
-8. Run `Publish Extension` VS Code workspace build task, equivalent to:
+8. Setup `bicep-types` submodule in `bicep-types-dsc`:
+    1. `git submodule update --init`
+    2. `cd bicep-types/src/bicep-types`
+    3. `npm install && npm run build`
+9. Run `Publish Extension` VS Code workspace build task, equivalent to:
     - `cd dsc && ./build.ps1 -Project dscbicep`
     - `cd bicep-types-dsc && npm start` (might need `npm install` first)
-9. Run `Build CLI` VS Code Bicep task, equivalent to:
+10. Run `Build CLI` VS Code Bicep task, equivalent to:
     - `cd bicep && dotnet build src/Bicep.Cli/Bicep.Cli.csproj`
 
 DSC sometimes needs the CFS Cargo feed updated. A Microsoft employee can add
