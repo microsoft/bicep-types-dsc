@@ -35,13 +35,20 @@ interface ResourceInfo {
 }
 
 async function publish(output: string): Promise<ProcessOutput> {
-  // The command `bicep publish-extension` takes 'index.json' and creates a tarball (OCI artifact) that is a Bicep extension, with the bundled gRPC server.
-  // TODO: Handle cross-compilation.
-  const dscbiep = `../DSC/bin/debug/dscbicep`;
-  return $`bicep publish-extension ${output}/index.json \
-    --bin-win-x64 ${dscbiep}.exe \
-    --target ${output}/dsc.tgz \
-    --force`;
+  // The command `bicep publish-extension` takes 'index.json' and creates a
+  // tarball (OCI artifact) that is a Bicep extension, with the bundled gRPC
+  // server.
+  //
+  // TODO: Handle cross-compilation and release binaries.
+  const dscBicep = `../DSC/bin/debug/dscbicep`;
+  const binFlags = [];
+  if (process.platform === "win32") {
+    binFlags.push("--bin-win-x64", `${dscBicep}.exe`);
+  } else if (process.platform === "darwin") {
+    binFlags.push("--bin-osx-arm64", dscBicep);
+  }
+
+  return $`bicep publish-extension ${output}/index.json ${binFlags} --target ${output}/dsc.tgz --force`;
 }
 
 async function main(): Promise<number> {
@@ -73,8 +80,6 @@ async function main(): Promise<number> {
     usePwsh();
   }
 
-  options.publish = true;
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   if (options.publish) {
     await publish(options.output);
     return 0;
