@@ -40,7 +40,7 @@
   },
   "dependencies": {
     "@hyperjump/json-schema": "^1.14.0",
-    "bicep-types": "file:bicep-types/src/bicep-types",
+    "bicep-types": "^0.6.49-g556bf5edad",
     "commander": "^13.1.0",
     "loglevel": "^1.9.2",
     "zx": "^8.5.4"
