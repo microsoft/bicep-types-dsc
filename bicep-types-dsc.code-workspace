@@ -46,11 +46,11 @@
         "pid": "${command:pickMyProcess}",
       },
       {
-        "name": "Launch dscbicep",
+        "name": "Launch dsc-bicep-ext",
         "type": "lldb",
         "expressions": "simple",
         "request": "launch",
-        "program": "${workspaceFolder:DSC}/bin/debug/dscbicep",
+        "program": "${workspaceFolder:DSC}/bin/debug/dsc-bicep-ext",
         "env": {
           "DSC_TRACE_LEVEL": "DEBUG",
         }
@@ -77,13 +77,13 @@
         "label": "Local Deploy",
         "detail": "Runs bicep local-deploy",
         "type": "shell",
-        "command": "${workspaceFolder:bicep}/src/Bicep.Cli/bin/Debug/net10.0/bicep local-deploy ${input:bicepParam}.bicepparam",
+        "command": "bicep local-deploy ${input:bicepParam}.bicepparam 2> ${input:bicepParam}.log",
         "options": {
           "cwd": "${workspaceFolder:bicep-types-dsc}",
           "env": {
-            "BICEP_TRACING_ENABLED": "false",
+            "BICEP_TRACING_ENABLED": "true",
             "BICEP_TRACING_VERBOSITY": "basic",
-            "DSC_TRACE_LEVEL": "TRACE",
+            "DSC_TRACE_LEVEL": "INFO",
             "DSC_GRPC_DEBUG": "false"
           }
         },
@@ -117,10 +117,10 @@
         "group": "test"
       },
       {
-        "label": "Build dscbicep",
-        "detail": "Builds dscbicep gRPC server.",
+        "label": "Build dsc-bicep-ext",
+        "detail": "Builds dsc-bicep-ext gRPC server.",
         "type": "shell",
-        "command": "./build.ps1 -Project dscbicep",
+        "command": "./build.ps1 -Project dsc-bicep-ext",
         "options": {
           "cwd": "${workspaceFolder:DSC}",
           "env": {
@@ -144,7 +144,7 @@
       },
       {
         "label": "Publish Extension",
-        "detail": "Builds dscbicep gRPC server and publishes into Bicep extension.",
+        "detail": "Builds dsc-bicep-ext gRPC server and publishes into Bicep extension.",
         "type": "shell",
         "command": "npm run start",
         "options": {
@@ -165,7 +165,7 @@
           }
         },
         "dependsOn": [
-          "Build dscbicep"
+          "Build dsc-bicep-ext"
         ],
         "presentation": {
           "reveal": "silent"
@@ -173,13 +173,14 @@
         "group": {
           "kind": "build",
           "isDefault": true
-        }
+        },
+        "problemMatcher": []
       }
     ]
   },
   "settings": {
     "[typescript]": {
-      "editor.defaultFormatter": "prettier.prettier-vscode"
+      "editor.defaultFormatter": "esbenp.prettier-vscode"
     },
     "git.branchProtectionPrompt": "alwaysCommit",
     "editor.formatOnSave": true,
@@ -199,8 +200,8 @@
   "extensions": {
     "recommendations": [
       "dbaeumer.vscode-eslint",
-      "prettier.prettier-vscode",
       "vadimcn.vscode-lldb",
+      "esbenp.prettier-vscode",
     ],
   },
 }

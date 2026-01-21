@@ -40,12 +40,12 @@ async function publish(output: string): Promise<ProcessOutput> {
   // server.
   //
   // TODO: Handle cross-compilation and release binaries.
-  const dscBicep = `../DSC/bin/debug/dscbicep`;
+  const dscBicepExt = `../DSC/bin/debug/dsc-bicep-ext`;
   const binFlags = [];
   if (process.platform === "win32") {
-    binFlags.push("--bin-win-x64", `${dscBicep}.exe`);
+    binFlags.push("--bin-win-x64", `${dscBicepExt}.exe`);
   } else if (process.platform === "darwin") {
-    binFlags.push("--bin-osx-arm64", dscBicep);
+    binFlags.push("--bin-osx-arm64", dscBicepExt);
   }
 
   return $`bicep publish-extension ${output}/index.json ${binFlags} --target ${output}/dsc.tgz --force`;
