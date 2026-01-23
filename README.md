@@ -64,13 +64,9 @@ debugging.
 2. Install [Rust](https://rust-lang.org/tools/install/), for DSC
 3. Install [.NET SDK](https://dotnet.microsoft.com/en-us/download), for Bicep
 4. Clone this repo: `git clone https://github.com/microsoft/bicep-types-dsc.git`
-5. Clone DSC feature branch: `git clone -b bicep-gRPC https://github.com/andyleejordan/DSC.git`
-6. Clone Bicep feature branch: `git clone -b named-pipes https://github.com/andyleejordan/bicep.git`
+5. Clone DSC: `git clone https://github.com/powershell/DSC.git`
+6. Clone Bicep: `git clone -b named-pipes https://github.com/azure/bicep.git`
 7. Open this project's multi-root workspace: `code bicep-types-dsc/bicep-types-dsc.code-workspace`
-8. Setup `bicep-types` submodule in `bicep-types-dsc`:
-    1. `git submodule update --init`
-    2. `cd bicep-types/src/bicep-types`
-    3. `npm install && npm run build`
 9. Run `Publish Extension` VS Code workspace build task, equivalent to:
     - `cd dsc && ./build.ps1 -Project dscbicep`
     - `cd bicep-types-dsc && npm start` (might need `npm install` first)
