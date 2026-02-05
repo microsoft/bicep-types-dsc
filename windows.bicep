@@ -49,7 +49,7 @@ resource registryThemeKeys 'Microsoft.Windows/Registry@1.0.0' = [
 @description('Packages to get')
 param packages array
 
-resource winget 'Microsoft.WinGet/Package@1.12.350' existing = [
+resource winget 'Microsoft.WinGet/Package@1.12.460' existing = [
   for package in packages: {
     id: package
   }

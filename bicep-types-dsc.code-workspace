@@ -67,7 +67,8 @@
         "options": [
           "example",
           "macos",
-          "windows"
+          "windows",
+          "winget"
         ],
         "default": "example"
       }
