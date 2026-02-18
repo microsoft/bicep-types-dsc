@@ -3,7 +3,7 @@
     "localDeploy": true
   },
   "extensions": {
+    // "dsc": "br:contosobicepdsc1.azurecr.io/extensions/dsc:latest"
     "dsc": "./out/dsc.tgz"
-  },
-  "implicitExtensions": []
+  }
 }
