@@ -54,7 +54,30 @@
         "env": {
           "DSC_TRACE_LEVEL": "DEBUG",
         }
-      }
+      },
+      {
+        "name": "Publish to ACR",
+        "type": "coreclr",
+        "request": "launch",
+        "program": "${workspaceFolder:bicep}/src/Bicep.Cli/bin/Debug/net10.0/bicep",
+        "justMyCode": false,
+        "args": [
+          "publish-extension",
+          "${workspaceFolder:bicep-types-dsc}/out/index.json",
+          "--bin-win-x64",
+          "${workspaceFolder:DSC}/bin/release/dsc-bicep-ext.exe",
+          "--target",
+          "br:contosobicepdsc1.azurecr.io/extensions/dsc:latest",
+          "--force"
+        ],
+        "env": {
+          "BICEP_TRACING_ENABLED": "true",
+          "BICEP_TRACING_VERBOSITY": "basic",
+        },
+        "cwd": "${workspaceFolder:bicep}/src/Bicep.Cli",
+        "console": "internalConsole",
+        "stopAtEntry": false
+      },
     ],
   },
   "tasks": {
@@ -145,7 +168,7 @@
       },
       {
         "label": "Publish Extension",
-        "detail": "Builds dsc-bicep-ext gRPC server and publishes into Bicep extension.",
+        "detail": "Publishes the Bicep extension.",
         "type": "shell",
         "command": "npm run start",
         "options": {
@@ -165,9 +188,6 @@
             }
           }
         },
-        "dependsOn": [
-          "Build dsc-bicep-ext"
-        ],
         "presentation": {
           "reveal": "silent"
         },
