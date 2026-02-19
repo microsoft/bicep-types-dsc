@@ -1,4 +1,4 @@
-# DSC to Bicep Types Generator
+# DSC extension for Bicep
 
 This is a work-in-progress app to convert DSC type definitions to Bicep's format
 and includes a DSC gRPC server (written in Rust, and part of the DSC project) to
@@ -80,3 +80,12 @@ bicep local-deploy .\windows.bicepparam
 DSC sometimes needs the CFS Cargo feed updated. A Microsoft employee can add
 `-UseCFS` to the build command. This project sometimes needs the CFS NPM feed
 updated. A Microsoft employee can follow a GUI-driven login procedure.
+
+## Known areas for improvement
+
+* Publish extension with cross-platform types and binaries
+* Add semantic versioning support to Bicep so types are resolved for e.g. 1.x
+* Discover types dynamically in the extension (e.g. implement `get_type_files()`)
+* Fix Bicep to support for resources named in `snake_case`
+* Test examples with metadata
+* Add DSC's custom functions
