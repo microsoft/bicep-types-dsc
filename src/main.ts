@@ -24,13 +24,16 @@ interface ResourceInfo {
   kind: string;
   version: string;
   manifest: {
-    schema: {
-      embedded?: JsonSchemaDraft202012Object;
-      command?: {
-        executable: string;
-        args: string[];
-      };
-    };
+    schema: SchemaInfo;
+  };
+  schema?: SchemaInfo;
+}
+
+interface SchemaInfo {
+  embedded?: JsonSchemaDraft202012Object;
+  command?: {
+    executable: string;
+    args: string[];
   };
 }
 
@@ -117,10 +120,13 @@ async function main(): Promise<number> {
     const type = resource.type;
     const version = resource.version;
 
+    // Adapted resources put their schema at the top-level.
+    const schemaInfo: SchemaInfo = resource.schema ?? resource.manifest.schema;
     let schema: JsonSchemaDraft202012Object;
-    if (resource.manifest.schema.embedded !== undefined) {
-      schema = resource.manifest.schema.embedded;
-    } else if (resource.manifest.schema.command !== undefined) {
+
+    if (schemaInfo.embedded !== undefined) {
+      schema = schemaInfo.embedded;
+    } else if (schemaInfo.command !== undefined) {
       try {
         const commandSchema = await $`dsc resource schema -r ${type} -o json`;
         schema = JSON.parse(
