@@ -6,6 +6,7 @@ namespace Bicep.Extension.DSC;
 using System.Diagnostics;
 using System.IO.Pipes;
 using System.Net.Sockets;
+using System.Runtime.InteropServices;
 using System.Security.Principal;
 using Bicep.Local.Rpc;
 using Grpc.Core;
@@ -20,6 +21,7 @@ public class DscProxyService : BicepExtension.BicepExtensionBase, IHostedService
     private Process? process;
     private GrpcChannel? channel;
     private BicepExtension.BicepExtensionClient? client;
+    private nint jobHandle;
 
     private BicepExtension.BicepExtensionClient Client
         => client ?? throw new RpcException(new Status(StatusCode.Unavailable, "dsc-bicep-ext is not ready"));
@@ -90,6 +92,11 @@ public class DscProxyService : BicepExtension.BicepExtensionBase, IHostedService
 
             process.Start();
 
+            if (OperatingSystem.IsWindows())
+            {
+                AssignToJobObject(process);
+            }
+
             process.BeginErrorReadLine();
             process.BeginOutputReadLine();
 
@@ -137,6 +144,12 @@ public class DscProxyService : BicepExtension.BicepExtensionBase, IHostedService
         {
             channel?.Dispose();
             process?.Dispose();
+
+            if (jobHandle != IntPtr.Zero)
+            {
+                CloseHandle(jobHandle);
+                jobHandle = IntPtr.Zero;
+            }
         }
     }
 
@@ -246,4 +259,101 @@ public class DscProxyService : BicepExtension.BicepExtensionBase, IHostedService
             }
         }
     }
+
+    // Windows Job Object support: ensures child processes are killed when this process dies.
+    // When our process is terminated (even via Kill/TerminateProcess), the OS closes the job
+    // object handle, which automatically kills all processes assigned to the job.
+
+    private void AssignToJobObject(Process childProcess)
+    {
+        jobHandle = CreateJobObject(IntPtr.Zero, null);
+        if (jobHandle == IntPtr.Zero)
+        {
+            WriteTrace(() => $"Failed to create job object: {Marshal.GetLastPInvokeError()}");
+            return;
+        }
+
+        var info = new JOBOBJECT_EXTENDED_LIMIT_INFORMATION
+        {
+            BasicLimitInformation = new JOBOBJECT_BASIC_LIMIT_INFORMATION
+            {
+                LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE,
+            },
+        };
+
+        var length = Marshal.SizeOf<JOBOBJECT_EXTENDED_LIMIT_INFORMATION>();
+        var infoPtr = Marshal.AllocHGlobal(length);
+        try
+        {
+            Marshal.StructureToPtr(info, infoPtr, false);
+            if (!SetInformationJobObject(jobHandle, JobObjectInfoClass.ExtendedLimitInformation, infoPtr, (uint)length))
+            {
+                WriteTrace(() => $"Failed to set job object info: {Marshal.GetLastPInvokeError()}");
+            }
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(infoPtr);
+        }
+
+        if (!NativeAssignProcessToJobObject(jobHandle, childProcess.Handle))
+        {
+            WriteTrace(() => $"Failed to assign process to job object: {Marshal.GetLastPInvokeError()}");
+        }
+    }
+
+    private const uint JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE = 0x2000;
+
+    private enum JobObjectInfoClass
+    {
+        ExtendedLimitInformation = 9,
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct JOBOBJECT_BASIC_LIMIT_INFORMATION
+    {
+        public long PerProcessUserTimeLimit;
+        public long PerJobUserTimeLimit;
+        public uint LimitFlags;
+        public nuint MinimumWorkingSetSize;
+        public nuint MaximumWorkingSetSize;
+        public uint ActiveProcessLimit;
+        public nint Affinity;
+        public uint PriorityClass;
+        public uint SchedulingClass;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct IO_COUNTERS
+    {
+        public ulong ReadOperationCount;
+        public ulong WriteOperationCount;
+        public ulong OtherOperationCount;
+        public ulong ReadTransferCount;
+        public ulong WriteTransferCount;
+        public ulong OtherTransferCount;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct JOBOBJECT_EXTENDED_LIMIT_INFORMATION
+    {
+        public JOBOBJECT_BASIC_LIMIT_INFORMATION BasicLimitInformation;
+        public IO_COUNTERS IoInfo;
+        public nuint ProcessMemoryLimit;
+        public nuint JobMemoryLimit;
+        public nuint PeakProcessMemoryUsed;
+        public nuint PeakJobMemoryUsed;
+    }
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern nint CreateJobObject(nint securityAttributes, string? name);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool SetInformationJobObject(nint job, JobObjectInfoClass infoClass, nint info, uint length);
+
+    [DllImport("kernel32.dll", EntryPoint = "AssignProcessToJobObject", SetLastError = true)]
+    private static extern bool NativeAssignProcessToJobObject(nint job, nint process);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool CloseHandle(nint handle);
 }
