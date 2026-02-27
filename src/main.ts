@@ -40,15 +40,27 @@ interface SchemaInfo {
 async function publish(output: string): Promise<ProcessOutput> {
   // The command `bicep publish-extension` takes 'index.json' and creates a
   // tarball (OCI artifact) that is a Bicep extension, with the bundled gRPC
-  // server.
+  // server (a facade which starts dsc-bicep-ext, the actual gRPC server).
   //
   // TODO: Handle cross-compilation and release binaries.
-  const dscBicepExt = `../DSC/bin/debug/dsc-bicep-ext`;
+  const facadeDir = `src/bin/release/net10.0`;
+  const facadeBin = `bicep-ext-dsc`;
   const binFlags = [];
   if (process.platform === "win32") {
-    binFlags.push("--bin-win-x64", `${dscBicepExt}.exe`);
+    binFlags.push(
+      "--bin-win-x64",
+      `${facadeDir}/win-x64/publish/${facadeBin}.exe`,
+    );
   } else if (process.platform === "darwin") {
-    binFlags.push("--bin-osx-arm64", dscBicepExt);
+    binFlags.push(
+      "--bin-osx-arm64",
+      `${facadeDir}/osx-arm64/publish/${facadeBin}`,
+    );
+  } else if (process.platform === "linux") {
+    binFlags.push(
+      "--bin-linux-x64",
+      `${facadeDir}/linux-x64/publish/${facadeBin}`,
+    );
   }
 
   return $`bicep publish-extension ${output}/index.json ${binFlags} --target ${output}/dsc.tgz --force`;

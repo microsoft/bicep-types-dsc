@@ -1,6 +1,15 @@
+# Node.js
 **.js
 **.js.map
 dist/
 node_modules/
+
+# .NET
+bin/
+obj/
+*.user
+*.suo
+
+# Other
 out/
 *.log
